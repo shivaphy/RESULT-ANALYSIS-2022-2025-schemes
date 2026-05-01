@@ -1,0 +1,2525 @@
+<!DOCTYPE html>
+<!--
+  ════════════════════════════════════════════════════════════════════
+  VTU RESULT ANALYSIS TOOL v4  —  OFFLINE EDITION
+  Jain College of Engineering, Belagavi
+  SES Admin · Dr. Shivkumar Math, HOD Physics
+
+  HOW TO RUN OFFLINE (read once):
+  1. Keep this file in the SAME folder as:
+        pdf.min.js
+        pdf.worker.min.js
+        exceljs.min.js
+  2. Open this file in Chrome or Edge — double-click it.
+  3. Done. No internet needed.
+  ════════════════════════════════════════════════════════════════════
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VTU Result Analysis Tool v4.9 — JCE Belagavi</title>
+
+<!-- ── LIBRARIES — loaded from CDN (no local files needed) ───────────────
+     pdf.js  : Mozilla's PDF text-extraction engine
+     exceljs : ExcelJS spreadsheet export (native color/border/font support)
+     ────────────────────────────────────────────────────────────────── -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter','Segoe UI',sans-serif;background:#F0F2F5;color:#1A1A2E;font-size:13px}
+.shell{min-height:100vh;display:flex;flex-direction:column}
+
+/* ── TOP BAR ── */
+.topbar{background:linear-gradient(120deg,#1F4E79 0%,#2E75B6 100%);color:#fff;padding:14px 22px;display:flex;align-items:center;gap:16px;box-shadow:0 3px 12px rgba(0,0,0,.30)}
+.tl{width:54px;height:54px;background:#fff;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#1F4E79;text-align:center;line-height:1.3;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.15);letter-spacing:.5px}
+.tt{flex:1}.tt h1{font-size:24px;font-weight:700;letter-spacing:.6px;line-height:1.2}.tt p{font-size:12px;opacity:.85;margin-top:3px;font-family:'Inter','Segoe UI',sans-serif;font-weight:400;letter-spacing:.15px}
+.tbadge{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:6px;padding:3px 10px;font-size:10px;white-space:nowrap}
+.offline-badge{background:#27500A;color:#fff;border-radius:6px;padding:3px 10px;font-size:10px;font-weight:600;white-space:nowrap}
+
+/* ── LAYOUT ── */
+.main{flex:1;padding:14px;display:grid;grid-template-columns:280px 1fr;gap:13px;align-items:start}
+.sidebar{display:flex;flex-direction:column;gap:10px}
+.card{background:#fff;border:1px solid #E2E6EA;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.ch{padding:9px 13px;border-bottom:1px solid #E2E6EA;font-weight:600;font-size:11px;display:flex;align-items:center;gap:7px;background:#FAFBFC;color:#1A1A2E}
+.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.cb{padding:12px}
+
+/* ── DROP ZONE ── */
+.dz{border:2px dashed #B5D4F4;border-radius:9px;padding:22px 14px;text-align:center;cursor:pointer;position:relative;transition:all .2s;background:#FAFEFF}
+.dz:hover,.dz.over{background:#E6F4FF;border-color:#378ADD}
+.dz input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.dz-ic{width:34px;height:34px;background:#E6F1FB;border-radius:8px;display:flex;align-items:center;justify-content:center;margin:0 auto 8px}
+.dz p{font-size:11px;color:#5F6B7A;font-weight:500}.dz .sub{font-size:10px;color:#9AABB8;margin-top:3px}
+
+/* ── FILE LIST ── */
+.flist{margin-top:8px;display:flex;flex-direction:column;gap:3px;max-height:140px;overflow-y:auto}
+.fi{display:flex;align-items:center;gap:7px;padding:4px 8px;background:#F5F7FA;border-radius:6px;font-size:10px;border:1px solid #E8EBF0}
+.fn{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#374151}
+.fst{width:15px;height:15px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0;font-weight:700}
+.fp{background:#F1EFE8;color:#888}.fq{background:#DBEAFE;color:#1D4ED8}.fd{background:#D1FAE5;color:#065F46}.fe{background:#FEE2E2;color:#991B1B}
+
+/* ── PROGRESS ── */
+.pb-bg{height:5px;background:#E5E7EB;border-radius:3px;overflow:hidden;margin-top:8px}
+.pb-fill{height:100%;background:#1F4E79;transition:width .3s;width:0;border-radius:3px}
+.pb-lbl{font-size:10px;color:#6B7280;margin-top:3px}
+
+/* ── STAT GRID ── */
+.sg{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.sc{background:#F5F7FA;border-radius:8px;padding:9px;text-align:center;border:1px solid #E8EBF0}
+.sv{font-size:20px;font-weight:700}.sl{font-size:9px;color:#6B7280;margin-top:2px;text-transform:uppercase;letter-spacing:.5px}
+.sv-b{color:#1D4ED8}.sv-g{color:#065F46}.sv-r{color:#991B1B}.sv-a{color:#92400E}
+.sbadges{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
+.badge{padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600}
+.b22{background:#DBEAFE;color:#1E40AF}.b25{background:#D1FAE5;color:#065F46}.b21{background:#FEF3C7;color:#92400E}.b23b{background:#EDE9FE;color:#5B21B6}.bmx{background:#F3F4F6;color:#374151}
+
+/* ── FORMULA BOX ── */
+.formula-box{background:#F8FAFC;border:1px solid #E2E6EA;border-radius:8px;padding:10px 12px;font-size:10px;color:#4B5563;line-height:1.9}
+.fl{font-weight:700;color:#1F4E79;font-size:10px;margin-bottom:1px;margin-top:7px}
+.fl:first-child{margin-top:0}
+.formula-box code{font-family:'Consolas','Courier New',monospace;color:#1F4E79;font-size:10px;background:#E6F1FB;padding:1px 5px;border-radius:3px}
+
+/* ── DEBUG BOX ── */
+.debug-box{background:#1A1A2E;color:#A0F0A0;border-radius:6px;padding:8px 10px;font-size:9px;font-family:'Consolas','Courier New',monospace;max-height:180px;overflow-y:auto;white-space:pre-wrap;display:none;margin-top:7px;border:1px solid #374151}
+
+/* ── BUTTONS ── */
+.btn-dl{background:#1F4E79;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:12px;font-weight:600;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:center;gap:7px;transition:background .15s;letter-spacing:.2px}
+.btn-dl:hover{background:#1E40AF}.btn-dl:disabled{background:#93C5FD;cursor:not-allowed}
+.btn-2{background:#fff;color:#374151;border:1px solid #D1D5DB;border-radius:8px;padding:6px 12px;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .15s;width:100%;justify-content:center;font-weight:500}
+.btn-2:hover{background:#F3F4F6;border-color:#9CA3AF}
+
+/* ── TABS ── */
+.cp{display:flex;flex-direction:column;gap:10px}
+.tabs{display:flex;border-bottom:2px solid #E5E7EB;padding:0 14px;overflow-x:auto;background:#FAFBFC}
+.tab{padding:8px 12px;font-size:11px;cursor:pointer;border-bottom:3px solid transparent;color:#6B7280;white-space:nowrap;transition:all .15s;font-weight:500;margin-bottom:-2px}
+.tab.active{color:#1F4E79;border-bottom-color:#1F4E79;font-weight:700}
+.tab:hover:not(.active){color:#374151;background:#F3F4F6;border-radius:6px 6px 0 0}
+.tpanels{padding:12px}
+.panel{display:none}.panel.active{display:block}
+
+/* ── TABLES ── */
+table{width:100%;border-collapse:collapse;font-size:10px}
+th{background:linear-gradient(90deg,#1F4E79 0%,#2463A0 100%);color:#fff;padding:6px 9px;text-align:left;font-weight:600;font-size:10px;white-space:nowrap;position:sticky;top:0;z-index:2}
+th.sh2{background:#2E75B6}
+td{padding:5px 9px;border-bottom:1px solid #F0F2F5;vertical-align:middle;white-space:nowrap;color:#1F2937}
+tr.z td{background:#F9FAFB}
+tr:hover td{background:#EFF6FF!important}
+.tw{overflow-x:auto;max-height:410px;overflow-y:auto;border-radius:8px;border:1px solid #E5E7EB;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+
+/* ── STATUS BADGES ── */
+.sp{background:#D1FAE5;color:#065F46;border-radius:20px;padding:2px 7px;font-size:9px;font-weight:700}
+.sf{background:#FEE2E2;color:#991B1B;border-radius:20px;padding:2px 7px;font-size:9px;font-weight:700}
+.sd{background:#FEF3C7;color:#92400E;border-radius:20px;padding:2px 7px;font-size:9px;font-weight:700}
+.qg{background:#D1FAE5;color:#065F46;border-radius:20px;padding:2px 7px;font-size:9px;font-weight:700}
+.qa{background:#FEF3C7;color:#92400E;border-radius:20px;padding:2px 7px;font-size:9px;font-weight:700}
+.qr{background:#FEE2E2;color:#991B1B;border-radius:20px;padding:2px 7px;font-size:9px;font-weight:700}
+.arr-row td{background:#FFFF00!important;color:#412402!important;font-weight:700}
+
+/* ── EMPTY STATE ── */
+.es{text-align:center;padding:44px 20px;color:#9CA3AF}
+.es-ic{width:44px;height:44px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;margin:0 auto 10px}
+.es p{font-size:12px}
+
+/* ── ALERTS ── */
+.alrt{padding:7px 10px;border-radius:7px;font-size:10px;display:flex;align-items:flex-start;gap:7px;margin-bottom:8px;line-height:1.5}
+.ai{background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE}
+.aw{background:#FFFBEB;color:#92400E;border:1px solid #FCD34D}
+.ag{background:#ECFDF5;color:#065F46;border:1px solid #6EE7B7}
+.ae{background:#FEF2F2;color:#991B1B;border:1px solid #FECACA}
+
+/* ── KPI CARDS ── */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:11px}
+.kpi{border-radius:9px;padding:12px 10px;text-align:center;border:1px solid;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.kv{font-size:24px;font-weight:700;line-height:1}.kl{font-size:9px;margin-top:3px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.kpi-b{background:#EFF6FF;border-color:#BFDBFE}.kpi-b .kv{color:#1E40AF}.kpi-b .kl{color:#1D4ED8}
+.kpi-g{background:#ECFDF5;border-color:#6EE7B7}.kpi-g .kv{color:#065F46}.kpi-g .kl{color:#059669}
+.kpi-r{background:#FEF2F2;border-color:#FECACA}.kpi-r .kv{color:#991B1B}.kpi-r .kl{color:#DC2626}
+.kpi-a{background:#FFFBEB;border-color:#FCD34D}.kpi-a .kv{color:#78350F}.kpi-a .kl{color:#92400E}
+.db2c{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.t5item{display:flex;align-items:center;gap:8px;padding:7px 9px;background:#F9FAFB;border-radius:7px;margin-bottom:5px;border:1px solid #E5E7EB}
+.t5rank{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+.r1{background:#FCD34D;color:#78350F}.r2{background:#D1D5DB;color:#374151}.r3{background:#FCA5A5;color:#7F1D1D}.rn{background:#F3F4F6;color:#6B7280;border:1px solid #D1D5DB}
+
+/* ── FOOTER ── */
+.footer{background:linear-gradient(90deg,#1F4E79 0%,#2E75B6 100%);color:rgba(255,255,255,.70);text-align:center;padding:8px;font-size:10px;letter-spacing:.4px;font-style:italic}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="tl">JCE<br>BGM</div>
+  <div class="tt">
+    <h1>VTU Result Analysis Tool v4.9 — Online Edition</h1>
+    <p>Jain College of Engineering, Belagavi &nbsp;·&nbsp; SES Admin &nbsp;·&nbsp; Dr. Shivkumar Math &nbsp;·&nbsp; 2021 / 2022 / 2023B / 2025 Scheme &nbsp;·&nbsp; Credit-Weighted SGPA</p>
+  </div>
+  <div class="offline-badge">✓ OFFLINE</div>
+  <div class="tbadge" id="schemeInd">No data</div>
+</div>
+
+<div class="main">
+<!-- ════════ SIDEBAR ════════ -->
+<div class="sidebar">
+
+  <!-- Upload -->
+  <div class="card">
+    <div class="ch"><span class="dot" style="background:#378ADD"></span>Upload VTU PDF Results</div>
+    <div class="cb">
+      <div class="dz" id="dz">
+        <input type="file" id="fi" multiple accept=".pdf">
+        <div class="dz-ic">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1D4ED8" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+        </div>
+        <p>Drag &amp; drop PDFs or click to browse</p>
+        <div class="sub">Bulk upload · 2021, 2022, 2023B &amp; 2025 schemes · All semesters (1–8) · All subjects extracted</div>
+      </div>
+      <div class="flist" id="flist"></div>
+      <div id="pbwrap" style="display:none">
+        <div class="pb-bg"><div class="pb-fill" id="pbfill"></div></div>
+        <div class="pb-lbl" id="pblbl">Ready</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary -->
+  <div class="card">
+    <div class="ch"><span class="dot" style="background:#059669"></span>Class Summary</div>
+    <div class="cb">
+      <div class="sg">
+        <div class="sc"><div class="sv sv-b" id="st-tot">0</div><div class="sl">Students</div></div>
+        <div class="sc"><div class="sv sv-g" id="st-pass">0%</div><div class="sl">Pass Rate</div></div>
+        <div class="sc"><div class="sv sv-r" id="st-fail">0</div><div class="sl">Failed</div></div>
+        <div class="sc"><div class="sv sv-a" id="st-sgpa">—</div><div class="sl">Avg SGPA</div></div>
+      </div>
+      <div class="sbadges" id="sbadges"><span style="font-size:10px;color:#9CA3AF">—</span></div>
+    </div>
+  </div>
+
+  <!-- Formulas -->
+  <div class="card">
+    <div class="ch"><span class="dot" style="background:#F59E0B"></span>Active VTU Formulas</div>
+    <div class="cb">
+      <div class="formula-box">
+        <div class="fl">All Schemes — SGPA (Credit-Weighted)</div>
+        <code>SGPA = Σ(GP × Cr) / Σ(Cr)</code><br>
+        <span style="font-size:9px;color:#9CA3AF">Current semester only · Arrears excluded · Failed subjects: GP=0, credits counted</span>
+        <div class="fl">VTU CBCS Percentage</div>
+        <code>Percentage = (SGPA − 0.75) × 10</code>
+        <div class="fl">Classification</div>
+        <code>≥ 7.75 → Distinction</code><br>
+        <code>6.75 – 7.74 → First Class</code><br>
+        <code>&lt; 6.75 → Second Class</code><br>
+        <span style="font-size:9px;color:#9CA3AF">FAIL / DETAINED → Classification = "—"</span>
+        <div class="fl">Scheme Detection by Subject Code</div>
+        <code>1B[X]NNN → 2025 Scheme (Sem 1–8)</code><br>
+        <code>B[X]NNN → 2023B Scheme (NEP Transition)</code><br>
+        <code>22[X]NN → 2022 Scheme (Sem 1–8)</code><br>
+        <code>21[X]NN → 2021 Scheme</code>
+      </div>
+    </div>
+  </div>
+
+  <!-- Export -->
+  <div class="card">
+    <div class="ch"><span class="dot" style="background:#F59E0B"></span>Export</div>
+    <div class="cb" style="display:flex;flex-direction:column;gap:7px">
+      <button class="btn-dl" id="btnDl" disabled>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Download SES Analysis Report
+      </button>
+      <button class="btn-2" id="btnClr">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="3 6 5 6 21 6"/>
+          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+        </svg>
+        Clear All Data
+      </button>
+      <div id="libStatus" class="alrt ae" style="display:none">⚠ Check internet connection — CDN libraries failed to load</div>
+      <div class="debug-box" id="debugBox"></div>
+      <button class="btn-2" style="margin-top:4px;display:none" id="btnCopyDbg" onclick="navigator.clipboard.writeText(debugLog.join('\n')).then(()=>{this.textContent='✓ Copied!';setTimeout(()=>{this.textContent='📋 Copy Debug Log'},1500)})">📋 Copy Debug Log</button>
+    </div>
+  </div>
+
+</div><!-- /sidebar -->
+
+<!-- ════════ CONTENT PANEL ════════ -->
+<div class="cp">
+  <div class="card">
+    <div class="tabs" id="tabbar">
+      <div class="tab active" data-t="db">📊 Dashboard</div>
+      <div class="tab" data-t="top5">🏆 Top 5</div>
+      <div class="tab" data-t="marks">📋 Detailed Marks</div>
+      <div class="tab" data-t="sum">📄 Result Summary</div>
+      <div class="tab" data-t="subj">📈 Subject Analysis</div>
+      <div class="tab" data-t="cls">🎖 Classification</div>
+      <div class="tab" data-t="arr">⚠ Arrear Alert</div>
+    </div>
+    <div class="tpanels">
+      <div class="panel active" id="p-db">
+        <div class="es"><div class="es-ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div><p>Upload PDF result sheets to populate the dashboard</p></div>
+      </div>
+      <div class="panel" id="p-top5"><div class="es"><p>No data yet</p></div></div>
+      <div class="panel" id="p-marks"><div class="es"><p>No data yet</p></div></div>
+      <div class="panel" id="p-sum"><div class="es"><p>No data yet</p></div></div>
+      <div class="panel" id="p-subj"><div class="es"><p>No data yet</p></div></div>
+      <div class="panel" id="p-cls"><div class="es"><p>No data yet</p></div></div>
+      <div class="panel" id="p-arr"><div class="es"><p>No arrears detected</p></div></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<div class="footer">
+  SHIVA's Digital Ecosystem &nbsp;—&nbsp; Generated by SES Admin &nbsp;—&nbsp; Dr. Shivkumar Math, HOD Physics, JCE Belagavi
+</div>
+</div><!-- /shell -->
+
+<!-- ════════════════════════════════════════════════════════════════════
+     MAIN SCRIPT — VTU RESULT PARSER + EXCEL ENGINE
+     ════════════════════════════════════════════════════════════════════ -->
+<script>
+/* ── library check + pdfjs init ── */
+let pdfjs = null;
+window.addEventListener('load', ()=>{
+  /* pdf.js 3.x registers as window.pdfjsLib; 2.x as window['pdfjs-dist/build/pdf'] */
+  pdfjs = window.pdfjsLib || window['pdfjs-dist/build/pdf'] || null;
+  const hasXLSX = typeof ExcelJS !== 'undefined';
+
+  if(pdfjs){
+    /* Use CDN worker matching the loaded pdf.js version */
+    pdfjs.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    dbg('✓ pdf.js loaded (v'+(pdfjs.version||'?')+')');
+  } else {
+    document.getElementById('libStatus').style.display='flex';
+    dbg('✗ pdf.js failed to load — check internet connection');
+  }
+  if(!hasXLSX){
+    document.getElementById('libStatus').style.display='flex';
+    dbg('✗ exceljs.min.js failed to load — check internet connection');
+  }
+  if(pdfjs && hasXLSX) dbg('✓ All libraries ready. Drop 2022 scheme PDFs now.');
+});
+
+let students = [];
+let debugLog = [];
+
+/* ════════════════════════════════════════════════════════════════════
+   SECTION 1 — MATHS ENGINE
+   ════════════════════════════════════════════════════════════════════ */
+
+function gradeFromMarks(total){
+  if(typeof total!=='number'||isNaN(total)||total<0) return {gp:0,grade:'F'};
+  if(total>=90) return {gp:10,grade:'O'};
+  if(total>=80) return {gp:9, grade:'A+'};
+  if(total>=70) return {gp:8, grade:'A'};
+  if(total>=60) return {gp:7, grade:'B+'};
+  if(total>=55) return {gp:6, grade:'B'};
+  if(total>=50) return {gp:5, grade:'C'};
+  if(total>=40) return {gp:4, grade:'P'};
+  return {gp:0, grade:'F'};
+}
+
+/* VTU CBCS credit-weighted SGPA — arrears excluded */
+function calcSGPA(subjects){
+  const cur = subjects.filter(s=>!s.isArrear);
+  if(!cur.length) return 0;
+  let num=0, den=0;
+  cur.forEach(s=>{
+    const cr = (typeof s.cr==='number'&&s.cr>0) ? s.cr : 1;
+    num += (s.result==='P' ? s.gp : 0) * cr;
+    den += cr;
+  });
+  return den>0 ? +(num/den).toFixed(2) : 0;
+}
+
+/* VTU CBCS percentage */
+const vtuPct = sgpa => sgpa>0 ? +((sgpa-0.75)*10).toFixed(2) : 0;
+
+/* Strict PASS / FAIL / DETAINED */
+function determineStatus(subjects){
+  const cur = subjects.filter(s=>!s.isArrear);
+  if(!cur.length) return 'DETAINED';
+  const ABS = new Set(['AB','NE','X','WH','—','-']);
+  const allAbs = cur.every(s=>ABS.has(String(s.internal).toUpperCase().trim())||ABS.has(String(s.external).toUpperCase().trim()));
+  if(allAbs) return 'DETAINED';
+  if(subjects.some(s=>s.result==='F'||s.grade==='F')) return 'FAIL';
+  return 'PASS';
+}
+
+function classify(sgpa,status){
+  if(status!=='PASS') return '—';
+  if(sgpa>=7.75) return 'Distinction';
+  if(sgpa>=6.75) return 'First Class';
+  return 'Second Class';
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   SECTION 2 — PDF PARSER  (3-layer with Y-tolerance clustering)
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Subject code patterns for all four VTU CBCS schemes
+   2025: 1B + 2-8 alpha chars + 2-4 digits + optional suffix  (Sem 1-8)
+   2023B: B + 2-8 alpha + 3 digits + optional [A-Z]  (NEP transition/provisional — May/Jun/Jul 2023)
+          e.g. BMATE201, BPHYE202, BBEE203, BPWSK206, BESCK204E, BETCK205H
+   2022: 22 + 2-6 alpha + 2-3 digits + optional alpha
+   2021: 21 + 2-6 alpha + 2-3 digits + optional alpha
+*/
+/* ── SUB_CODE_RE v4.8 ──────────────────────────────────────────────────
+   2025 scheme : 1B + 2–8 alpha + 2–5 digits + optional alphanumeric suffix
+                 e.g. 1BCS301, 1BMATS101, 1BECL405, 1BCSP803
+   2023B scheme: B (not 1B) + 2–8 alpha + 3 digits + optional [A-Z] suffix
+                 e.g. BMATE201, BPHYE202, BBEE203, BPWSK206, BICOK207,
+                      BSFHK258, BESCK204E, BETCK205H, BIDTK158, BPLCK105B
+   2022 scheme : 22 + 1–8 alpha + 1–5 digits + optional [A-Z0-9] suffix
+                 e.g. 22CS42, 22CS6T, 22MAT31, 22MATDIP31, 22CVL37, 22ECP44B
+   2021 scheme : 21 + 1–8 alpha + 1–5 digits + optional [A-Z0-9] suffix
+                 e.g. 21CS42, 21MAT31, 21CVL37
+   Branch part widened to 1–8 alpha (was 1–6) for longer branch codes such as
+   22MATDIP, 22AISML; digit part widened to 1–5 (was 1–3) for future-proof codes.
+   USN-length guard (≥ 10 chars) is applied separately in parseTokens so that
+   tokens like "2JI22EC126" (10 chars, looks like a code) are discarded early.
+   2023B guard: must NOT start with "1B" (already covered by 2025 branch) and
+   must have exactly 3 trailing digits (optionally + 1 alpha) to avoid matching
+   common English words.
+   ──────────────────────────────────────────────────────────────────────── */
+const SUB_CODE_RE = /^(1B[A-Z]{2,8}[0-9]{2,5}[A-Z0-9]?|B[A-Z]{2,8}[0-9]{3}[A-Z]?|2[12][A-Z]{1,8}[0-9]{1,5}[A-Z0-9]?)$/;
+
+/*
+ * 2025 SCHEME CREDIT MAP
+ * The VTU 2025-scheme PDF does NOT print credit columns.
+ * Credits are fixed per subject code — hardcoded here.
+ * Add/update codes as new semesters are announced.
+ */
+const CREDIT_MAP_2025 = {
+  /* ══ SEM 1 — Common to all branches ══ */
+  '1BMATS101':4,'1BPHYS102':4,'1BCEDS103':4,
+  '1BESC104A':3,'1BESC104B':3,'1BESC104C':3,
+  '1BESC104D':3,'1BESC104E':3,'1BESC104F':3,
+  '1BEIT105':3,'1BSKS106':1,'1BPOPL107':1,
+  '1BIDTL158':1,'1BKSK109':1,'1BKBK109':1,
+
+  /* ══ SEM 2 — Common ══ */
+  '1BMATS201':4,'1BCHEM202':4,'1BCEDS203':4,
+  '1BESC204A':3,'1BESC204B':3,'1BESC204C':3,
+  '1BESC204D':3,'1BESC204E':3,'1BESC204F':3,
+  '1BEIT205':3,'1BSKS206':1,'1BMEL207':1,
+  '1BIDTL258':1,'1BKSK209':1,'1BKBK209':1,
+
+  /* ══ SEM 3 — CS/IS/AI branches ══ */
+  '1BMAT301':4,
+  '1BCS301':3,'1BCS302':3,'1BCS303':3,'1BCS304':3,
+  '1BCSL305':2,'1BCSL306':2,'1BCS307':1,'1BCS308':1,
+  /* Soc.Sci / Eco / Universal Human Values elective */
+  '1BSOC301':2,'1BECO301':2,'1BUHV301':2,
+
+  /* ══ SEM 3 — ECE/EEE/EIE ══ */
+  '1BMAT311':4,
+  '1BEC301':3,'1BEC302':3,'1BEC303':3,'1BEC304':3,
+  '1BECL305':2,'1BECL306':2,'1BEC307':1,
+
+  /* ══ SEM 3 — MECH / CIVIL ══ */
+  '1BMAT321':4,
+  '1BME301':3,'1BME302':3,'1BME303':3,'1BME304':3,
+  '1BMEL305':2,'1BMEL306':2,'1BME307':1,
+  '1BCV301':3,'1BCV302':3,'1BCV303':3,'1BCV304':3,
+  '1BCVL305':2,'1BCVL306':2,
+
+  /* ══ SEM 4 — CS/IS/AI ══ */
+  '1BCS401':3,'1BCS402':3,'1BCS403':3,'1BCS404':3,
+  '1BCSL405':2,'1BCSL406':2,'1BCS407':1,'1BCS408':1,
+
+  /* ══ SEM 4 — ECE/EEE ══ */
+  '1BEC401':3,'1BEC402':3,'1BEC403':3,'1BEC404':3,
+  '1BECL405':2,'1BECL406':2,'1BEC407':1,
+
+  /* ══ SEM 4 — MECH / CIVIL ══ */
+  '1BME401':3,'1BME402':3,'1BME403':3,'1BME404':3,
+  '1BMEL405':2,'1BMEL406':2,
+  '1BCV401':3,'1BCV402':3,'1BCV403':3,'1BCV404':3,
+  '1BCVL405':2,'1BCVL406':2,
+
+  /* ══ SEM 5 — CS/IS/AI ══ */
+  '1BCS501':3,'1BCS502':3,'1BCS503':3,'1BCS504':3,'1BCS505':3,
+  '1BCSL506':2,'1BCSL507':2,'1BCS508':1,
+  /* Open elective (OE) placeholders — 3 cr each */
+  '1BOE501':3,'1BOE502':3,'1BOE503':3,
+
+  /* ══ SEM 5 — ECE/EEE ══ */
+  '1BEC501':3,'1BEC502':3,'1BEC503':3,'1BEC504':3,'1BEC505':3,
+  '1BECL506':2,'1BECL507':2,
+
+  /* ══ SEM 5 — MECH / CIVIL ══ */
+  '1BME501':3,'1BME502':3,'1BME503':3,'1BME504':3,
+  '1BMEL505':2,'1BMEL506':2,
+  '1BCV501':3,'1BCV502':3,'1BCV503':3,'1BCV504':3,
+  '1BCVL505':2,'1BCVL506':2,
+
+  /* ══ SEM 6 — CS/IS/AI ══ */
+  '1BCS601':3,'1BCS602':3,'1BCS603':3,'1BCS604':3,'1BCS605':3,
+  '1BCSL606':2,'1BCSL607':2,'1BCS608':1,
+  '1BOE601':3,'1BOE602':3,
+
+  /* ══ SEM 6 — ECE/EEE ══ */
+  '1BEC601':3,'1BEC602':3,'1BEC603':3,'1BEC604':3,'1BEC605':3,
+  '1BECL606':2,'1BECL607':2,
+
+  /* ══ SEM 6 — MECH / CIVIL ══ */
+  '1BME601':3,'1BME602':3,'1BME603':3,'1BME604':3,
+  '1BMEL605':2,'1BMEL606':2,
+  '1BCV601':3,'1BCV602':3,'1BCV603':3,'1BCV604':3,
+  '1BCVL605':2,'1BCVL606':2,
+
+  /* ══ SEM 7 — CS/IS/AI (Mini-project=2, PEs=3 each) ══ */
+  '1BCS701':3,'1BCS702':3,'1BCS703':3,'1BCS704':3,
+  '1BCSP705':2,'1BCSL706':2,'1BCS707':1,
+  '1BPE701':3,'1BPE702':3,'1BPE703':3,   /* Professional electives */
+  '1BOE701':3,
+
+  /* ══ SEM 7 — ECE/EEE ══ */
+  '1BEC701':3,'1BEC702':3,'1BEC703':3,'1BEC704':3,
+  '1BECL705':2,'1BECL706':2,
+
+  /* ══ SEM 7 — MECH / CIVIL ══ */
+  '1BME701':3,'1BME702':3,'1BME703':3,'1BME704':3,
+  '1BMEL705':2,'1BMEL706':2,
+  '1BCV701':3,'1BCV702':3,'1BCV703':3,'1BCV704':3,
+  '1BCVL705':2,'1BCVL706':2,
+
+  /* ══ SEM 8 — Project + electives ══ */
+  '1BCS801':3,'1BCS802':3,'1BCSP803':8,'1BCS804':1,
+  '1BPE801':3,'1BPE802':3,
+  '1BEC801':3,'1BEC802':3,'1BECP803':8,
+  '1BME801':3,'1BME802':3,'1BMEP803':8,
+  '1BCV801':3,'1BCV802':3,'1BCVP803':8,
+};
+
+/* Fallback credit by subject-code suffix pattern for 2025 scheme */
+function creditFor2025(code){
+  if(CREDIT_MAP_2025[code]) return CREDIT_MAP_2025[code];
+  /* Project subjects (suffix P + 3 digits) → 8 credits */
+  if(/P\d{3}$/.test(code)) return 8;
+  /* Mini-project (suffix P + 3 digits in Sem 7 range) handled above */
+  /* Labs / Practical (suffix L + digits, or known lab keywords) → 2 credits */
+  if(/L\d{3}$/.test(code)||/LAB|POPL|IDTL|MEL|SKS|KSK|KBK/.test(code)) return 2;
+  /* Sem-1/2 SKS, POPL, MEL, Kannada → 1 credit */
+  if(/S[0-9]{3}$/.test(code)&&parseInt(code.replace(/\D/g,'').slice(0,1))<=2) return 1;
+  /* Maths / Science core (MATS, PHYS, CHEM, CEDS prefix) → 4 credits */
+  if(/^1B(MAT|PHYS|CHEM|CEDS)/.test(code)) return 4;
+  /* Everything else: theory → 3 credits */
+  return 3;
+}
+
+function detectScheme(codes){
+  const h21=codes.some(c=>/^21[A-Z]/.test(c));
+  const h22=codes.some(c=>/^22[A-Z]/.test(c));
+  const h25=codes.some(c=>/^1B[A-Z]/.test(c));
+  /* 2023B: starts with B but NOT 1B (e.g. BMATE201, BPHYE202) */
+  const h23b=codes.some(c=>/^B[A-Z]{2,8}[0-9]{3}[A-Z]?$/.test(c)&&!/^1B/.test(c));
+  const n=[h21,h22,h25,h23b].filter(Boolean).length;
+  if(n>1) return 'MIXED';
+  if(h25) return '2025'; if(h23b) return '2023B'; if(h22) return '2022'; if(h21) return '2021';
+  return 'UNKNOWN';
+}
+
+/* Y-tolerance line clustering — KEY FIX for VTU PDFs
+   YTOL=8 covers the ~6–7px inter-baseline variance seen in VTU 2022 marksheets
+   where subject name text items sit 1-2px above or below the code/marks items
+   on the same logical row. */
+const YTOL = 8;
+function clusterLines(tokens){
+  const sorted = [...tokens].sort((a,b)=>b.y-a.y||a.x-b.x);
+  const lines = [];
+  sorted.forEach(tok=>{
+    const last = lines[lines.length-1];
+    if(last && Math.abs(tok.y-last.y)<=YTOL){
+      last.tokens.push(tok);
+      last.y = (last.y+tok.y)/2;
+    } else {
+      lines.push({y:tok.y, tokens:[tok]});
+    }
+  });
+  lines.forEach(l=>l.tokens.sort((a,b)=>a.x-b.x));
+  return lines;
+}
+
+async function extractTokens(file){
+  if(!pdfjs){
+    dbg('ERROR: pdf.js not ready — is the page fully loaded?');
+    return null;
+  }
+  const ab = await file.arrayBuffer();
+  const pdf = await pdfjs.getDocument({data:ab}).promise;
+  dbg('PDF pages: '+pdf.numPages);
+  const tokens = [];
+  for(let p=1;p<=pdf.numPages;p++){
+    const pg = await pdf.getPage(p);
+    const tc = await pg.getTextContent();
+    dbg('Page '+p+' items: '+tc.items.length);
+    tc.items.forEach(it=>{
+      /* VTU PDFs frequently produce multi-word text items such as
+         "22CS42 Object Oriented Programming 4 30 70 100 10 O P".
+         If we push the whole string as one token the subject-code regex
+         never fires.  Split every item into individual whitespace-delimited
+         word-tokens, distributing X positions proportionally by character
+         count so downstream clusterLines / sort-by-X logic stays correct. */
+      const raw = it.str.replace(/\s+/g,' ').trim();
+      if(!raw) return;
+      const words = raw.split(' ').filter(w=>w.length>0);
+      const baseX = Math.round(it.transform[4]);
+      const baseY = Math.round(it.transform[5]);
+      /* Approximate character width: use item width if available, else 6px/char */
+      const itemW = it.width || (raw.length * 6);
+      const chW   = itemW / (raw.length || 1);
+      let cursor  = baseX;
+      words.forEach(w=>{
+        tokens.push({t:w, x:Math.round(cursor), y:baseY});
+        cursor += (w.length + 1) * chW;   /* +1 for the space separator */
+      });
+    });
+  }
+  return tokens;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   2025 SCHEME LINE PARSER
+   VTU 2025 table columns: SubjectCode | SubjectName | Internal | External | Total | Result | Date
+   No credit, GP, or grade columns in the PDF.
+   ────────────────────────────────────────────────────────────────── */
+function parse2025Line(toks, sem){
+  /* toks[0] = subject code (already validated).
+     We scan LEFT-TO-RIGHT for the first numeric triple followed by P/F */
+  const code = toks[0].toUpperCase();
+  const SPECIAL = new Set(['AB','WH','NE','X','-','—']);
+  const isNumOrSpec = v => SPECIAL.has(String(v).toUpperCase()) || /^\d+$/.test(v);
+  const toVal = v => /^\d+$/.test(String(v)) ? parseInt(v) : String(v).toUpperCase();
+
+  /* Strip trailing date tokens like "2026-03-11" */
+  let end = toks.length - 1;
+  while(end > 0 && /^\d{4}-\d{2}-\d{2}$/.test(toks[end])) end--;
+
+  /* The last meaningful token should be the Result (P/F/AB/WH/NE) */
+  let result = 'F';
+  if(/^(P|F|AB|WH|NE)$/i.test(toks[end])){
+    result = toks[end].toUpperCase() === 'P' ? 'P' : 'F';
+    end--;
+  }
+
+  /* Now scan right-to-left for Total, External, Internal (all numeric or special) */
+  let total = 0, ext = 0, int_ = 0;
+  if(end > 0 && isNumOrSpec(toks[end])){ total = toVal(toks[end]); end--; }
+  if(end > 0 && isNumOrSpec(toks[end])){ ext   = toVal(toks[end]); end--; }
+  if(end > 0 && isNumOrSpec(toks[end])){ int_  = toVal(toks[end]); end--; }
+
+  /* Remaining tokens between code and first number = subject name.
+     Strip numeric-only tokens and date strings that sometimes stray in. */
+  const nameToks = toks.slice(1, end+1).filter(t =>
+    !/^\d{4}-\d{2}-\d{2}$/.test(t) &&   /* date strings */
+    !/^\d+$/.test(t)                      /* stray numeric tokens */
+  );
+  /* Always fall back to codeLabel so the name is never blank or just the code */
+  const rawName = nameToks.join(' ').trim();
+  const subName = (rawName && rawName !== code) ? rawName : codeLabel(code);
+
+  /* Derive total if missing */
+  if((total === 0) && typeof int_ === 'number' && typeof ext === 'number') total = int_ + ext;
+
+  const cr = creditFor2025(code);
+  const g  = gradeFromMarks(typeof total === 'number' ? total : 0);
+
+  /* Override result based on marks — guards against PDF printing "P" for a failing total */
+  const finalResult = (g.grade === 'F') ? 'F' : (result === 'P' ? 'P' : 'F');
+
+  const schSem = (() => {
+    /* 2025 codes: 1BCS301 → 3rd digit group starts at char 2 after "1B"
+       e.g. 1BMATS101 → sem=1, 1BCS301 → sem=3, 1BCS601 → sem=6 */
+    const m = code.match(/^1B[A-Z]{2,8}(\d)/);
+    return m ? parseInt(m[1]) : 0;
+  })();
+  const isArrear = schSem > 0 && sem > 0 && sem > 2 && schSem < sem - 1;
+  return {code, name:subName, cr, internal:int_, external:ext, total,
+          gp:finalResult==='P'?g.gp:0, grade:finalResult==='P'?g.grade:'F',
+          result:finalResult, isArrear, semester:schSem, type:'REGULAR'};
+}
+
+function parseTokens(tokens, filename){
+  const full = tokens.map(t=>t.t).join(' ');
+  dbg('─── '+filename+' ───');
+  dbg('Raw tokens: '+tokens.length);
+  dbg('RAW TEXT (first 1200 chars): '+full.substring(0,1200));
+
+  /* ── USN extraction ─────────────────────────────────────────────────────── */
+  let usn='';
+  const usnPats=[
+    /University\s*Seat\s*Number\s*[:/]?\s*([0-9][A-Z0-9]{9})/i,
+    /(?:Register\s*(?:Number|No)\.?\s*[:/]?\s*)([0-9][A-Z0-9]{9})/i,
+    /(?:USN\s*[:/]?\s*)([0-9][A-Z0-9]{9})/i,
+    /\b([0-9][A-Z]{2}[0-9]{2}[A-Z]{2}[0-9]{3})\b/,
+    /\b([0-9][A-Z]{3}[0-9]{2}[A-Z]{2}[0-9]{3})\b/
+  ];
+  for(const p of usnPats){const m=full.match(p);if(m){usn=m[1].toUpperCase();break;}}
+  if(!usn){const t=tokens.find(t=>/^[0-9][A-Z]{2,3}[0-9]{2}[A-Z]{2}[0-9]{3}$/.test(t.t));if(t)usn=t.t.toUpperCase();}
+
+  /* Build a set of all tokens that look like USNs so we never treat one as a subject code */
+  const usnSet=new Set();
+  if(usn) usnSet.add(usn);
+  tokens.forEach(t=>{
+    if(/^[0-9][A-Z0-9]{9,11}$/.test(t.t)) usnSet.add(t.t.toUpperCase());
+  });
+
+  /* ── Student name ────────────────────────────────────────────────────────── */
+  let name='Unknown';
+  const nmPats=[
+    /Student\s*Name\s*[:/]?\s*([A-Z][A-Z\s.]{2,50}?)(?:\s+(?:Father|Sem(?:ester)?|Reg|DOB|USN|University|\d))/i,
+    /Name\s*[:/]\s*([A-Z][A-Z\s.]{2,50}?)(?:\s+(?:Father|Sem(?:ester)?|Reg|\d))/i,
+    /Name\s*[:/]\s*([A-Z][A-Z\s.]{2,50})/i
+  ];
+  for(const p of nmPats){const m=full.match(p);if(m){name=m[1].trim().replace(/\s+/g,' ');break;}}
+
+  /* ── Semester ────────────────────────────────────────────────────────────── */
+  let sem=0;
+  const semM=full.match(/Semester\s*[:/]?\s*([0-9]{1,2})/i)||full.match(/\b([0-9]{1,2})(?:st|nd|rd|th)\s*Semester/i);
+  if(semM) sem=parseInt(semM[1]);
+
+  /* ── Shared helpers ──────────────────────────────────────────────────────── */
+  const subjects = [];
+  const SPECIAL   = new Set(['AB','WH','NE','X','-','—']);
+  const isNumOrSpec = v=>{ const s=String(v).toUpperCase().trim(); return SPECIAL.has(s)||/^-?[0-9]+$/.test(s); };
+  const toVal       = v=>{ const s=String(v).trim(); return /^-?[0-9]+$/.test(s)?parseInt(s):s.toUpperCase(); };
+  const SKIP_WORDS  = new Set(['REGULAR','LATERAL','EX-STUDENT','ARREAR','BACKLOG','IMPROVEMENT','REPEAT','DETAINED','READMISSION','WITHHELD']);
+
+  /* isSubjectCode: true only for tokens that look like real VTU subject codes.
+     Rejects: USNs (length ≥ 10), pure numbers, words in the skip list. */
+  const isSubjectCode = t => {
+    if(!t || typeof t !== 'string') return false;
+    const u = t.toUpperCase();
+    if(u.length >= 10) return false;          /* USN length guard */
+    if(usnSet.has(u)) return false;           /* explicit USN set guard */
+    return SUB_CODE_RE.test(u);
+  };
+
+  /* schSemFrom2022: extract semester number from 2022/2021 subject code.
+     VTU 2022 format: 22<BRANCH><SEM><SUBNUM>
+     e.g. 22MAT11 → sem=1, 22CS42 → sem=4, 22MATDIP31 → sem=3
+     The first digit of the TRAILING numeric group is the semester. */
+  const schSemFrom2022 = code => {
+    const m = code.match(/^2[12][A-Z]{1,8}(\d)/);
+    return m ? parseInt(m[1]) : 0;
+  };
+
+  /* reconcileMarks: derive/correct grade, gp, result from numeric total */
+  const reconcileMarks = (total, grade, gp, result) => {
+    if(typeof total==='number' && total>0){
+      const g=gradeFromMarks(total);
+      if(g.grade==='F'){ return {grade:'F',gp:0,result:'F'}; }
+      if(grade==='F'&&total>=40){ grade=g.grade; gp=g.gp; }
+      else if(gp===0&&g.gp>0){ gp=g.gp; }
+      if(result==='P'&&grade==='F'){ grade=g.grade; gp=g.gp; }
+    }
+    return {grade,gp,result};
+  };
+
+  /* ── Early scheme detection (needed to decide Layer-2 strategy) ─────────── */
+  const allCodeTokens = tokens
+    .filter(t => isSubjectCode(t.t))
+    .map(t => t.t.toUpperCase());
+  const earlyScheme = detectScheme(allCodeTokens);
+  dbg('Early scheme: '+earlyScheme+' | code tokens found: '+allCodeTokens.length+' → '+allCodeTokens.slice(0,8).join(', '));
+
+  /* ════════════════════════════════════════════════════════════════════════════
+     LAYER 1 — Y-tolerance line clustering
+     Each cluster (line) is processed independently.
+     For 2022 scheme the subject name is often split across multiple PDF items
+     on the same Y, so clusterLines already joins them into one line's token list.
+     ════════════════════════════════════════════════════════════════════════════ */
+  const lines = clusterLines(tokens);
+  dbg('L1 clustered lines: '+lines.length);
+
+  lines.forEach(line=>{
+    const toks = line.tokens.map(t=>t.t);
+    if(!toks.length) return;
+
+    /* Find the subject code — check first 4 tokens (some PDFs have a seq number before the code) */
+    let codeIdx=-1;
+    for(let i=0;i<Math.min(4,toks.length);i++){
+      if(isSubjectCode(toks[i])){codeIdx=i;break;}
+    }
+    if(codeIdx<0) return;
+
+    const code=toks[codeIdx].toUpperCase();
+    if(subjects.find(s=>s.code===code)) return; /* deduplicate */
+
+    /* ── 2025 scheme ── */
+    if(/^1B[A-Z]/.test(code)){
+      const sub = parse2025Line(toks.slice(codeIdx), sem);
+      if(sub) subjects.push(sub);
+      return;
+    }
+
+    /* ── 2023B scheme (NEP transition, e.g. BMATE201, BPHYE202) ──
+       Same PDF column layout as 2025: Code | Name | Internal | External | Total | Result | Date
+       Re-use parse2025Line; override semester extraction afterward. */
+    if(/^B[A-Z]{2,8}[0-9]{3}[A-Z]?$/.test(code)){
+      const sub = parse2025Line(toks.slice(codeIdx), sem);
+      if(sub){
+        /* Derive semester from the 3-digit suffix: BMATE201 → '2' → sem 2 */
+        const mSem = code.match(/[0-9]{3}/);
+        sub.semester = mSem ? parseInt(mSem[0][0]) : sem;
+        sub.isArrear = sub.semester > 0 && sem > 0 && sem > 2 && sub.semester < sem - 1;
+        subjects.push(sub);
+      }
+      return;
+    }
+
+    /* ── 2021 / 2022 scheme ─────────────────────────────────────────────────
+       VTU 2022 PDF column layout (canonical):
+         SubjectCode | SubjectName | Credits | Internal | External | Total | GP | Grade | Result | [Type]
+
+       Known variants in the wild:
+         (a) Credits BEFORE marks  : Code Name Cr Int Ext Total GP  Grade Result
+         (b) Credits AFTER marks   : Code Name Int Ext Total Cr  GP  Grade Result
+         (c) No GP                 : Code Name Cr Int Ext Total Grade Result
+         (d) No Grade              : Code Name Cr Int Ext Total GP   Result
+         (e) No GP or Grade        : Code Name Cr Int Ext Total Result
+         (f) No Credits anywhere   : Code Name Int Ext Total GP  Grade Result
+         (g) Completely minimal    : Code Name Int Ext Total Result
+
+       Strategy: scan the token list right-to-left using pattern recognition.
+       The key insight is that Result, Grade, and GP have UNIQUE lexical shapes
+       that don't overlap with marks or credits, so we can peel them off the
+       right end safely before extracting marks.
+    ─────────────────────────────────────────────────────────────────────────── */
+
+    let ptr = toks.length-1;
+    let typeStr='REGULAR';
+
+    /* Peel off trailing type keyword if present */
+    if(SKIP_WORDS.has((toks[ptr]||'').toUpperCase())){ typeStr=toks[ptr].toUpperCase(); ptr--; }
+
+    let result='F', grade='F', gp=0, total=0, ext=0, int_=0, cr=3;
+
+    /* ① Result  — must be P / F / AB / WH / NE */
+    if(ptr>codeIdx && /^(P|F|AB|WH|NE)$/i.test(toks[ptr])){
+      result = toks[ptr].toUpperCase()==='P' ? 'P' : 'F';
+      ptr--;
+    }
+
+    /* ② Grade — O / A+ / A / B+ / B / C (never ambiguous with P/F for result
+       because result was already consumed).  Also accept P/F as grade when
+       the result was "P" (passing students have grade ≥ P). */
+    if(ptr>codeIdx && /^(O|A\+|A|B\+|B|C)$/i.test(toks[ptr])){
+      grade=toks[ptr].toUpperCase(); ptr--;
+    } else if(ptr>codeIdx && /^[PF]$/i.test(toks[ptr]) && result==='P'){
+      grade=toks[ptr].toUpperCase(); ptr--;
+    }
+
+    /* ③ GP  — 0–10 (two-digit "10" handled explicitly) */
+    if(ptr>codeIdx && /^(10|[0-9])$/.test(toks[ptr])){
+      gp=parseInt(toks[ptr]); ptr--;
+    }
+
+    /* ④ Total, External, Internal — right-to-left, all numeric-or-special.
+       IMPORTANT: stop consuming if we would eat a credits-range digit (1–5)
+       that is sandwiched between two non-numeric tokens (name tokens).
+       We use a lookahead: if ptr-1 is also numeric-or-special OR ptr-1 ≤ codeIdx,
+       the token is a mark; otherwise it might be credits, leave it. */
+    const safeNum = i => {
+      if(i<=codeIdx) return false;
+      if(!isNumOrSpec(toks[i])) return false;
+      /* If the value is 1-5 AND the token before it is NOT numeric/special,
+         it could be a credits token — but we still consume it here as a mark
+         candidate and fix up credits later from what's left. */
+      return true;
+    };
+    if(safeNum(ptr)){ total=toVal(toks[ptr]); ptr--; }
+    if(safeNum(ptr)){ ext  =toVal(toks[ptr]); ptr--; }
+    if(safeNum(ptr)){ int_ =toVal(toks[ptr]); ptr--; }
+
+    /* ⑤ Credits — single digit 1–9 immediately before the name.
+       Check ptr first; if not a valid credit digit, do a left-scan. */
+    if(ptr>codeIdx && /^[1-9]$/.test(toks[ptr])){
+      cr=parseInt(toks[ptr]); ptr--;
+    } else {
+      for(let ci=ptr; ci>codeIdx; ci--){
+        if(/^[1-9]$/.test(toks[ci])){
+          const cand=parseInt(toks[ci]);
+          if(cand>=1 && cand<=5){ cr=cand; ptr=ci-1; break; }
+        }
+      }
+    }
+
+    /* ⑥ Derive total from Int+Ext if total is still zero/missing */
+    if((total===0||total==='0') && typeof int_==='number' && typeof ext==='number'){
+      total = int_+ext;
+    }
+
+    /* ⑦ Grade / GP reconciliation */
+    const rec = reconcileMarks(total, grade, gp, result);
+    grade=rec.grade; gp=rec.gp; result=rec.result;
+
+    /* ⑧ Subject name: everything left between codeIdx+1 and ptr (inclusive).
+       Only strip single-digit pure numbers (credits fragments) and skip-words.
+       Do NOT strip multi-digit numbers — they might be part of the subject title
+       (e.g. "Mathematics-I", "Digital Electronics 3rd"). */
+    const nameToks = toks.slice(codeIdx+1, ptr+1).filter(t=>{
+      const u=(t||'').toUpperCase();
+      if(SKIP_WORDS.has(u)) return false;
+      if(/^[1-9]$/.test(t)) return false;   /* lone credit digit */
+      return true;
+    });
+    const rawName = nameToks.join(' ').trim();
+    const subName = (rawName && rawName !== code) ? rawName : codeLabel(code);
+
+    /* ⑨ Semester from code */
+    const schSem = schSemFrom2022(code);
+    const isArrear = schSem>0 && sem>0 && sem>2 && schSem < sem-1;
+
+    dbg('L1 parsed: '+code+' cr='+cr+' int='+int_+' ext='+ext+' tot='+total+' gp='+gp+' gr='+grade+' res='+result+' name="'+subName+'"');
+    subjects.push({code, name:subName||codeLabel(code), cr, internal:int_, external:ext,
+                   total, gp, grade, result, isArrear, semester:schSem, type:typeStr});
+  });
+  dbg('Layer-1 subjects: '+subjects.length);
+
+  /* ════════════════════════════════════════════════════════════════════════════
+     LAYER 2 — Full-text regex fallback
+     CRITICAL CHANGE from v4.4: Layer 2 is no longer gated behind subjects.length<2.
+     For 2022 scheme, Layer 1 frequently extracts only the first subject because
+     the right-to-left parser fails on lines that don't contain a complete row
+     (subject name split across lines, or missing columns).  Layer 2 runs always
+     for 2022/2021 scheme, and only adds subjects not already in the list.
+     For 2025 scheme the old <2 gate is kept (2025 parser is reliable).
+     ════════════════════════════════════════════════════════════════════════════ */
+
+  const is2022Scheme = earlyScheme==='2022' || earlyScheme==='2021' || earlyScheme==='MIXED';
+  /* 2023B uses the same reliable parse2025Line parser, so treat like 2025 (low gate) */
+  const is2023BScheme = earlyScheme==='2023B';
+  const need2025Layer2 = (subjects.length < 2) && !is2022Scheme;
+  const need2122Layer2 = is2022Scheme;   /* always run for 2022 — never skip */
+
+  if(need2025Layer2 || need2122Layer2){
+    dbg('→ Layer-2 (2025='+need2025Layer2+', 2122='+need2122Layer2+')...');
+
+    /* ── Shared helpers ── */
+    const add25=(code,nm,i_,e_,tot_,res_)=>{
+      code=code.toUpperCase();
+      if(!isSubjectCode(code)) return;
+      if(subjects.find(s=>s.code===code)) return;
+      const int_v=parseInt(i_)||0, ext_v=parseInt(e_)||0;
+      const tot=parseInt(tot_)||int_v+ext_v;
+      const g=gradeFromMarks(tot);
+      const res=(res_||'').toUpperCase()==='P'&&g.grade!=='F'?'P':'F';
+      const cr=creditFor2025(code);
+      const nm2=(nm&&nm.trim()&&nm.trim()!==code)?nm.trim():codeLabel(code);
+      subjects.push({code,name:nm2,cr,internal:int_v,external:ext_v,total:tot,
+                     gp:res==='P'?g.gp:0,grade:res==='P'?g.grade:'F',result:res,
+                     isArrear:false,semester:0,type:'REGULAR'});
+    };
+
+    const add2122=(code,nm,crS,i_,e_,tot_,gp_,grade_,res_)=>{
+      code=code.toUpperCase();
+      if(!isSubjectCode(code)) return;
+      if(subjects.find(s=>s.code===code)) return;
+      const tot=parseInt(tot_)||0;
+      const g=gradeFromMarks(tot);
+      const gp=parseInt(gp_)||g.gp;
+      const grade=(grade_&&grade_!=='F'&&grade_!=='')?grade_:g.grade;
+      const res=(res_||'').toUpperCase()==='P'&&g.grade!=='F'?'P':'F';
+      const cr=parseInt(crS)||3;
+      const schSem=schSemFrom2022(code);
+      const nm2=(nm&&nm.trim()&&nm.trim()!==code)?nm.trim():codeLabel(code);
+      dbg('L2 +'+code+' cr='+cr+' i='+i_+' e='+e_+' tot='+tot+' res='+res);
+      subjects.push({code,name:nm2,cr,internal:parseInt(i_)||0,external:parseInt(e_)||0,
+                     total:tot,gp,grade,result:res,
+                     isArrear:schSem>0&&sem>0&&sem>2&&schSem<sem-1,
+                     semester:schSem,type:'REGULAR'});
+    };
+
+    /* ════════════════════════════════════════════════════════════════════
+       PRIMARY 2022 PASS — process each clustered line independently.
+       Since extractTokens now splits PDF items into individual word-tokens,
+       each clustered line looks like:
+         ['22CS42','Object','Oriented','Programming','4','30','70','100','10','O','P']
+       We run the right-to-left logic on every line — this is the most
+       reliable path for 2022 scheme PDFs.
+    ════════════════════════════════════════════════════════════════════ */
+    if(need2122Layer2){
+      const SKIP_W2=new Set(['REGULAR','LATERAL','EX-STUDENT','ARREAR','BACKLOG',
+                              'IMPROVEMENT','REPEAT','DETAINED','READMISSION','WITHHELD']);
+      lines.forEach(line=>{
+        const toks=line.tokens.map(t=>t.t);
+        if(toks.length < 3) return;
+
+        let codeIdx=-1;
+        for(let i=0;i<Math.min(4,toks.length);i++){
+          if(isSubjectCode(toks[i])){codeIdx=i;break;}
+        }
+        if(codeIdx<0) return;
+        const code=toks[codeIdx].toUpperCase();
+        if(subjects.find(s=>s.code===code)) return;
+
+        let ptr=toks.length-1;
+        if(SKIP_W2.has((toks[ptr]||'').toUpperCase())) ptr--;
+
+        let result2='F',grade2='F',gp2=0,total2=0,ext2=0,int2=0,cr2=3;
+
+        if(ptr>codeIdx&&/^(P|F|AB|WH|NE)$/i.test(toks[ptr])){
+          result2=toks[ptr].toUpperCase()==='P'?'P':'F'; ptr--;
+        }
+        if(ptr>codeIdx&&/^(O|A\+|A|B\+|B|C)$/i.test(toks[ptr])){
+          grade2=toks[ptr].toUpperCase(); ptr--;
+        } else if(ptr>codeIdx&&/^[PF]$/i.test(toks[ptr])&&result2==='P'){
+          grade2=toks[ptr].toUpperCase(); ptr--;
+        }
+        if(ptr>codeIdx&&/^(10|[0-9])$/.test(toks[ptr])){
+          gp2=parseInt(toks[ptr]); ptr--;
+        }
+        const mkRe=/^(\d{1,3}|AB|WH|NE|X)$/i;
+        if(ptr>codeIdx&&mkRe.test(toks[ptr])){
+          total2=isNaN(parseInt(toks[ptr]))?toks[ptr]:parseInt(toks[ptr]); ptr--;
+        }
+        if(ptr>codeIdx&&mkRe.test(toks[ptr])){
+          ext2=isNaN(parseInt(toks[ptr]))?toks[ptr]:parseInt(toks[ptr]); ptr--;
+        }
+        if(ptr>codeIdx&&mkRe.test(toks[ptr])){
+          int2=isNaN(parseInt(toks[ptr]))?toks[ptr]:parseInt(toks[ptr]); ptr--;
+        }
+        if(ptr>codeIdx&&/^[1-9]$/.test(toks[ptr])){
+          cr2=parseInt(toks[ptr]); ptr--;
+        } else {
+          for(let ci=ptr;ci>codeIdx;ci--){
+            if(/^[1-5]$/.test(toks[ci])){cr2=parseInt(toks[ci]);ptr=ci-1;break;}
+          }
+        }
+
+        const hasMarks=(typeof total2==='number'&&total2>0)||
+                       (typeof int2==='number'&&int2>0)||
+                       (typeof ext2==='number'&&ext2>0);
+        if(!hasMarks) return;
+
+        if(total2===0&&typeof int2==='number'&&typeof ext2==='number') total2=int2+ext2;
+        const rec2=reconcileMarks(total2,grade2,gp2,result2);
+
+        const nameToks2=toks.slice(codeIdx+1,ptr+1)
+          .filter(t=>!SKIP_W2.has(t.toUpperCase())&&!/^[1-9]$/.test(t));
+        const rawNm2=nameToks2.join(' ').trim();
+        const subNm2=(rawNm2&&rawNm2!==code)?rawNm2:codeLabel(code);
+        const schSem2=schSemFrom2022(code);
+
+        dbg('L2-line +'+code+' cr='+cr2+' i='+int2+' e='+ext2+' tot='+total2+' res='+rec2.result);
+        subjects.push({code,name:subNm2||codeLabel(code),cr:cr2,
+          internal:typeof int2==='number'?int2:0,
+          external:typeof ext2==='number'?ext2:0,
+          total:total2,gp:rec2.gp,grade:rec2.grade,result:rec2.result,
+          isArrear:schSem2>0&&sem>0&&sem>2&&schSem2<sem-1,
+          semester:schSem2,type:'REGULAR'});
+      });
+      dbg('After L2-line: '+subjects.length+' subjects');
+    }
+
+    /* ── 2025 scheme full-text regex ── */
+    const rx25 =/(1B[A-Z]{2,8}[0-9]{2,5}[A-Z0-9]?)\s+([\w &\/\-()',.:+]+?)\s+(\d{1,3}|AB|WH|NE|X)\s+(\d{1,3}|AB|WH|NE|X)\s+(\d{1,3}|AB|WH|NE|X)\s+(P|F|AB|WH|NE)\s+\d{4}-\d{2}-\d{2}/gi;
+    const rx25b=/(1B[A-Z]{2,8}[0-9]{2,5}[A-Z0-9]?)\s+([\w &\/\-()',.:+]+?)\s+(\d{1,3}|AB|WH|NE|X)\s+(\d{1,3}|AB|WH|NE|X)\s+(\d{1,3}|AB|WH|NE|X)\s+(P|F|AB|WH|NE)/gi;
+
+    /* ── 2022/2021 scheme full-text regex (catch anything the per-line pass missed) ── */
+    const CC = '2[12][A-Z]{1,8}[0-9]{1,5}[A-Z0-9]?';
+    const NM = '[A-Za-z][\\w &\\/\\-()\',.:+]*(?:\\s+[A-Za-z][\\w &\\/\\-()\',.:+]*)*';
+    const MK = '(?:\\d{1,3}|AB|WH|NE|X)';
+    const CR = '[1-9]\\d?';
+    const GP_G= '(10|[0-9])\\s+(O|A\\+|A|B\\+|B|C|P|F)';
+    const RS  = '(?:P|F|AB|WH)';
+
+    const rxA = new RegExp(`(${CC})\\s+(${NM})\\s+(${CR})\\s+(${MK})\\s+(${MK})\\s+(${MK})\\s+${GP_G}\\s+(${RS})`,'gi');
+    const rxB = new RegExp(`(${CC})\\s+(${NM})\\s+(${CR})\\s+(${MK})\\s+(${MK})\\s+(${MK})\\s+(${RS})`,'gi');
+    const rxC = new RegExp(`(${CC})\\s+(${NM})\\s+(${MK})\\s+(${MK})\\s+(${MK})\\s+(${CR})\\s+(O|A\\+|A|B\\+|B|C|P|F)\\s+(${RS})`,'gi');
+    const rxD = new RegExp(`(${CC})\\s+(${NM})\\s+(${MK})\\s+(${MK})\\s+(${MK})\\s+(${RS})`,'gi');
+
+    let m;
+    if(need2025Layer2){
+      while((m=rx25.exec(full))!==null)  add25(m[1],m[2],m[3],m[4],m[5],m[6]);
+      if(subjects.filter(s=>/^1B/.test(s.code)).length<2)
+        while((m=rx25b.exec(full))!==null) add25(m[1],m[2],m[3],m[4],m[5],m[6]);
+    }
+    if(need2122Layer2){
+      while((m=rxA.exec(full))!==null) add2122(m[1],m[2],m[3],m[4],m[5],m[6],m[7],m[8],m[9]);
+      while((m=rxB.exec(full))!==null) add2122(m[1],m[2],m[3],m[4],m[5],m[6],'0','',m[7]);
+      while((m=rxC.exec(full))!==null) add2122(m[1],m[2],m[6],m[3],m[4],m[5],'0',m[7],m[8]);
+      while((m=rxD.exec(full))!==null) add2122(m[1],m[2],'3',m[3],m[4],m[5],'0','',m[6]);
+    }
+    dbg('Layer-2 subjects: '+subjects.length);
+  }
+
+  /* ════════════════════════════════════════════════════════════════════════════
+     LAYER 3 — Token-pair scan (last resort for any scheme)
+     Only fires when both Layer 1 and 2 together produced fewer than 2 subjects.
+     ════════════════════════════════════════════════════════════════════════════ */
+  if(subjects.length<2){
+    dbg('→ Layer-3 token-pair scan...');
+    const flatToks=tokens.map(t=>t.t);
+    for(let i=0;i<flatToks.length;i++){
+      if(!isSubjectCode(flatToks[i])) continue;
+      const code=flatToks[i].toUpperCase();
+      if(subjects.find(s=>s.code===code)) continue;
+      const is2025=/^1B[A-Z]/.test(code);
+      let collected=[], ptr2=i+1;
+      while(collected.length<20 && ptr2<flatToks.length){
+        if(isSubjectCode(flatToks[ptr2])) break;
+        collected.push(flatToks[ptr2]); ptr2++;
+      }
+      const clean=collected.filter(t=>!/^\d{4}-\d{2}-\d{2}$/.test(t));
+      const resultIdx=clean.findIndex(t=>/^(P|F|AB|WH|NE)$/i.test(t));
+      const numBefore=(resultIdx>=0?clean.slice(0,resultIdx):clean)
+        .filter(t=>/^\d+$/.test(t)).map(Number).filter(n=>n>=0&&n<=200);
+      if(numBefore.length<2) continue;
+      const total3=numBefore[numBefore.length-1];
+      const ext3  =numBefore[numBefore.length-2];
+      const int3  =numBefore.length>=3?numBefore[numBefore.length-3]:0;
+      const resStr=(resultIdx>=0?clean[resultIdx]:'').toUpperCase();
+      const g=gradeFromMarks(Math.max(total3,int3+ext3));
+      const finalTot=Math.max(total3,int3+ext3);
+      const result3=(resStr==='P'&&g.grade!=='F')?'P':'F';
+      const cr3=is2025?creditFor2025(code):3;
+      const schSem3=is2025
+        ?(()=>{const mm=code.match(/^1B[A-Z]{2,8}(\d)/);return mm?parseInt(mm[1]):0;})()
+        :schSemFrom2022(code);
+      subjects.push({code,name:codeLabel(code),cr:cr3,internal:int3,external:ext3,
+                     total:finalTot,gp:result3==='P'?g.gp:0,
+                     grade:result3==='P'?g.grade:'F',result:result3,
+                     isArrear:schSem3>0&&sem>0&&sem>2&&schSem3<sem-1,
+                     semester:schSem3,type:'REGULAR'});
+    }
+    dbg('Layer-3 subjects: '+subjects.length);
+  }
+
+  /* Final grade reconciliation */
+  subjects.forEach(s=>{
+    if(typeof s.total==='number'&&s.total>0){
+      const g=gradeFromMarks(s.total);
+      if(s.gp===0&&g.gp>0&&s.result==='P'){s.gp=g.gp;s.grade=g.grade;}
+      if(g.grade==='F'){s.grade='F';s.gp=0;s.result='F';}
+    }
+    /* Ensure credits are never 0 */
+    if(!s.cr||s.cr===0){
+      s.cr = /^1B[A-Z]/.test(s.code) ? creditFor2025(s.code) : 3;
+    }
+  });
+
+  const scheme=detectScheme(subjects.map(s=>s.code));
+  const overallStatus=determineStatus(subjects);
+  const sgpa=calcSGPA(subjects);
+  const percentage=vtuPct(sgpa);
+  const classification=classify(sgpa,overallStatus);
+  const grandTotal=subjects.reduce((a,s)=>a+(typeof s.total==='number'?s.total:0),0);
+  const hasArrear=subjects.some(s=>s.isArrear);
+
+  dbg('USN:'+usn+' | Sem:'+sem+' | Scheme:'+scheme+' | Status:'+overallStatus+' | SGPA:'+sgpa+' | Subjects:'+subjects.length);
+  return {usn:usn||('NOUSN'+Date.now().toString(36).toUpperCase().slice(-4)),name,semester:sem,scheme,subjects,grandTotal,sgpa,percentage,overallStatus,classification,hasArrear};
+}
+
+function codeLabel(code){
+  const MAP={
+    /* ══════════════════════════════════════════════════════
+       2025 SCHEME — SEM 1
+    ══════════════════════════════════════════════════════ */
+    '1BMATS101':'Calculus & Linear Algebra',
+    '1BPHYS102':'Quantum Physics & Applications',
+    '1BCEDS103':'Computer-Aided Engg Drawing',
+    '1BESC104A':'Intro to Civil Engg',
+    '1BESC104B':'Intro to Mech Engg',
+    '1BESC104C':'Intro to Electronics & Comm Engg',
+    '1BESC104D':'Intro to Electrical Engg',
+    '1BESC104E':'Intro to Chemical Engg',
+    '1BESC104F':'Intro to Aero Engg',
+    '1BEIT105':'Programming in C',
+    '1BSKS106':'Soft Skills',
+    '1BPOPL107':'C Programming Lab',
+    '1BKSK109':'Samskrutika Kannada',
+    '1BKBK109':'Balake Kannada',
+    '1BIDTL158':'Innovation & Design Thinking Lab',
+
+    /* ══════════════════════════════════════════════════════
+       2025 SCHEME — SEM 2
+    ══════════════════════════════════════════════════════ */
+    '1BMATS201':'Engineering Mathematics II',
+    '1BCHEM202':'Engineering Chemistry',
+    '1BCEDS203':'Computer-Aided Engg Drawing II',
+    '1BESC204A':'Intro to CSE',
+    '1BESC204B':'Intro to ECE',
+    '1BESC204C':'Intro to EEE',
+    '1BESC204D':'Intro to Mech Engg II',
+    '1BESC204E':'Intro to Chemical Engg II',
+    '1BESC204F':'Intro to Civil Engg II',
+    '1BEIT205':'Programming in Python',
+    '1BSKS206':'Soft Skills II',
+    '1BMEL207':'Workshop / Mfg Practices',
+    '1BKSK209':'Samskrutika Kannada II',
+    '1BKBK209':'Balake Kannada II',
+    '1BIDTL258':'Innovation & Design Thinking Lab II',
+
+    /* ══════════════════════════════════════════════════════
+       2025 SCHEME — SEM 3 (CS/IS/AI)
+    ══════════════════════════════════════════════════════ */
+    '1BMAT301':'Engineering Mathematics III',
+    '1BCS301':'Digital Design & Computer Organisation',
+    '1BCS302':'Data Structures & Applications',
+    '1BCS303':'Analog & Digital Electronics',
+    '1BCS304':'Object-Oriented Programming with Java',
+    '1BCSL305':'Data Structures Lab',
+    '1BCSL306':'OOP with Java Lab',
+    '1BCS307':'Constitution of India & Professional Ethics',
+    '1BCS308':'Social Connect & Responsibility',
+    '1BSOC301':'Societal Connect',
+    '1BECO301':'Economics for Engineers',
+    '1BUHV301':'Universal Human Values',
+
+    /* ══════════════════════════════════════════════════════
+       2025 SCHEME — SEM 3 (ECE/EEE/EIE)
+    ══════════════════════════════════════════════════════ */
+    '1BMAT311':'Engineering Mathematics III (ECE)',
+    '1BEC301':'Network Analysis',
+    '1BEC302':'Electronic Devices & Circuits',
+    '1BEC303':'Digital System Design',
+    '1BEC304':'Signals & Systems',
+    '1BECL305':'Electronics Lab',
+    '1BECL306':'Digital Systems Lab',
+    '1BEC307':'Constitution of India & Professional Ethics',
+
+    /* ══════════════════════════════════════════════════════
+       2025 SCHEME — SEM 3 (MECH / CIVIL)
+    ══════════════════════════════════════════════════════ */
+    '1BMAT321':'Engineering Mathematics III (Mech)',
+    '1BME301':'Mechanics of Materials',
+    '1BME302':'Kinematics of Machinery',
+    '1BME303':'Fluid Mechanics',
+    '1BME304':'Thermodynamics',
+    '1BMEL305':'Fluid Mechanics Lab',
+    '1BMEL306':'Engineering Materials Lab',
+    '1BME307':'Constitution of India & Professional Ethics',
+    '1BCV301':'Surveying',
+    '1BCV302':'Fluid Mechanics (Civil)',
+    '1BCV303':'Strength of Materials',
+    '1BCV304':'Building Materials & Construction',
+    '1BCVL305':'Surveying Lab',
+    '1BCVL306':'Strength of Materials Lab',
+
+    /* ══════════════════════════════════════════════════════
+       2025 SCHEME — SEM 4 (CS/IS/AI)
+    ══════════════════════════════════════════════════════ */
+    '1BCS401':'Design & Analysis of Algorithms',
+    '1BCS402':'Microprocessors & Microcontrollers',
+    '1BCS403':'Operating Systems',
+    '1BCS404':'Formal Languages & Automata Theory',
+    '1BCSL405':'Algorithms Lab',
+    '1BCSL406':'Microprocessors Lab',
+    '1BCS407':'Employability Enhancement',
+    '1BCS408':'Indian Knowledge System',
+
+    /* ══════════════════════════════════════════════════════
+       2025 SCHEME — SEM 4 (ECE/EEE)
+    ══════════════════════════════════════════════════════ */
+    '1BEC401':'Analog Circuits',
+    '1BEC402':'Electromagnetic Waves',
+    '1BEC403':'Control Systems',
+    '1BEC404':'Digital Signal Processing',
+    '1BECL405':'Analog Circuits Lab',
+    '1BECL406':'DSP Lab',
+    '1BEC407':'Employability Enhancement',
+
+    /* ══════════════════════════════════════════════════════
+       2025 SCHEME — SEM 4 (MECH / CIVIL)
+    ══════════════════════════════════════════════════════ */
+    '1BME401':'Machine Design',
+    '1BME402':'Heat & Mass Transfer',
+    '1BME403':'Manufacturing Technology',
+    '1BME404':'Turbo Machines',
+    '1BMEL405':'Machine Design Lab',
+    '1BMEL406':'Manufacturing Technology Lab',
+    '1BCV401':'Structural Analysis',
+    '1BCV402':'Geotechnical Engineering',
+    '1BCV403':'Hydraulics & Hydraulic Machines',
+    '1BCV404':'Environmental Engineering',
+    '1BCVL405':'Concrete Technology Lab',
+    '1BCVL406':'Hydraulics Lab',
+
+    /* ══════════════════════════════════════════════════════
+       2025 SCHEME — SEM 5 (CS/IS/AI)
+    ══════════════════════════════════════════════════════ */
+    '1BCS501':'Database Management Systems',
+    '1BCS502':'Computer Networks',
+    '1BCS503':'Compiler Design',
+    '1BCS504':'Software Engineering',
+    '1BCS505':'Artificial Intelligence',
+    '1BCSL506':'DBMS Lab',
+    '1BCSL507':'Networks Lab',
+    '1BCS508':'Mini Project / Seminar',
+    '1BOE501':'Open Elective I',
+    '1BOE502':'Open Elective II',
+    '1BOE503':'Open Elective III',
+
+    /* ══════════════════════════════════════════════════════
+       2025 SCHEME — SEM 5 (ECE/EEE)
+    ══════════════════════════════════════════════════════ */
+    '1BEC501':'VLSI Design',
+    '1BEC502':'Microwave & Antenna',
+    '1BEC503':'Embedded Systems',
+    '1BEC504':'Communication Systems',
+    '1BEC505':'Machine Learning',
+    '1BECL506':'VLSI Lab',
+    '1BECL507':'Embedded Systems Lab',
+
+    /* ══════════════════════════════════════════════════════
+       2025 SCHEME — SEM 5 (MECH / CIVIL)
+    ══════════════════════════════════════════════════════ */
+    '1BME501':'CAD/CAM',
+    '1BME502':'Finite Element Analysis',
+    '1BME503':'Mechatronics',
+    '1BME504':'Industrial Engineering',
+    '1BMEL505':'CAD/CAM Lab',
+    '1BMEL506':'FEA Lab',
+    '1BCV501':'Design of RC Structures',
+    '1BCV502':'Transportation Engineering',
+    '1BCV503':'Water Resources Engineering',
+    '1BCV504':'Estimating & Costing',
+    '1BCVL505':'Structural Design Lab',
+    '1BCVL506':'Hydraulics Engineering Lab',
+
+    /* ══════════════════════════════════════════════════════
+       2025 SCHEME — SEM 6 (CS/IS/AI)
+    ══════════════════════════════════════════════════════ */
+    '1BCS601':'Machine Learning',
+    '1BCS602':'Cloud Computing',
+    '1BCS603':'Information & Network Security',
+    '1BCS604':'Mobile Application Development',
+    '1BCS605':'Big Data Analytics',
+    '1BCSL606':'ML Lab',
+    '1BCSL607':'Cloud Computing Lab',
+    '1BCS608':'Social Connect & Responsibility',
+    '1BOE601':'Open Elective IV',
+    '1BOE602':'Open Elective V',
+
+    /* ══════════════════════════════════════════════════════
+       2025 SCHEME — SEM 6 (ECE/EEE)
+    ══════════════════════════════════════════════════════ */
+    '1BEC601':'Digital Communication',
+    '1BEC602':'Optical Fiber Communication',
+    '1BEC603':'MEMS & Nanotechnology',
+    '1BEC604':'Image Processing',
+    '1BEC605':'IoT & Applications',
+    '1BECL606':'Communication Lab',
+    '1BECL607':'IoT Lab',
+
+    /* ══════════════════════════════════════════════════════
+       2025 SCHEME — SEM 6 (MECH / CIVIL)
+    ══════════════════════════════════════════════════════ */
+    '1BME601':'Robotics',
+    '1BME602':'Heat Treatment & Surface Engineering',
+    '1BME603':'Operations Research',
+    '1BME604':'Renewable Energy Systems',
+    '1BMEL605':'Robotics Lab',
+    '1BMEL606':'OR Lab',
+    '1BCV601':'Foundation Engineering',
+    '1BCV602':'Irrigation Engineering',
+    '1BCV603':'Construction Management',
+    '1BCV604':'Advanced Concrete Technology',
+    '1BCVL605':'Geotechnical Lab',
+    '1BCVL606':'Irrigation Lab',
+
+    /* ══════════════════════════════════════════════════════
+       2025 SCHEME — SEM 7 (CS/IS/AI)
+    ══════════════════════════════════════════════════════ */
+    '1BCS701':'Deep Learning',
+    '1BCS702':'Blockchain Technology',
+    '1BCS703':'Natural Language Processing',
+    '1BCS704':'Computer Vision',
+    '1BCSP705':'Mini Project',
+    '1BCSL706':'Deep Learning Lab',
+    '1BCS707':'Professional Practice & Ethics',
+    '1BPE701':'Professional Elective I',
+    '1BPE702':'Professional Elective II',
+    '1BPE703':'Professional Elective III',
+    '1BOE701':'Open Elective VI',
+
+    /* ══════════════════════════════════════════════════════
+       2025 SCHEME — SEM 7 (ECE/EEE)
+    ══════════════════════════════════════════════════════ */
+    '1BEC701':'Wireless Communications',
+    '1BEC702':'Radar & Navigational Aids',
+    '1BEC703':'AI in Electronics',
+    '1BEC704':'Advanced VLSI',
+    '1BECL705':'Advanced Communication Lab',
+    '1BECL706':'VLSI Design Lab',
+
+    /* ══════════════════════════════════════════════════════
+       2025 SCHEME — SEM 7 (MECH / CIVIL)
+    ══════════════════════════════════════════════════════ */
+    '1BME701':'Product Design & Development',
+    '1BME702':'Vibration & Control',
+    '1BME703':'Additive Manufacturing',
+    '1BME704':'Computational Fluid Dynamics',
+    '1BMEL705':'Additive Mfg Lab',
+    '1BMEL706':'CFD Lab',
+    '1BCV701':'Earthquake Engineering',
+    '1BCV702':'Remote Sensing & GIS',
+    '1BCV703':'Urban Planning',
+    '1BCV704':'Pavement Design',
+    '1BCVL705':'GIS Lab',
+    '1BCVL706':'Infrastructure Lab',
+
+    /* ══════════════════════════════════════════════════════
+       2025 SCHEME — SEM 8
+    ══════════════════════════════════════════════════════ */
+    '1BCS801':'Professional Elective IV',
+    '1BCS802':'Professional Elective V',
+    '1BCSP803':'Project Work (CS)',
+    '1BCS804':'Internship / Industrial Training',
+    '1BPE801':'Professional Elective IV',
+    '1BPE802':'Professional Elective V',
+    '1BEC801':'Professional Elective IV (ECE)',
+    '1BEC802':'Professional Elective V (ECE)',
+    '1BECP803':'Project Work (ECE)',
+    '1BME801':'Professional Elective IV (Mech)',
+    '1BME802':'Professional Elective V (Mech)',
+    '1BMEP803':'Project Work (Mech)',
+    '1BCV801':'Professional Elective IV (Civil)',
+    '1BCV802':'Professional Elective V (Civil)',
+    '1BCVP803':'Project Work (Civil)',
+
+    /* ══════════════════════════════════════════════════════
+       2022 SCHEME — SEM 1 (Common)
+    ══════════════════════════════════════════════════════ */
+    '22MATS11':'Calculus & Linear Algebra',
+    '22MATDIP11':'Additional Mathematics I',
+    '22PHYS12':'Engineering Physics',
+    '22CIV13':'Computer-Aided Engg Drawing',
+    '22ESC14A':'Elements of Civil Engg & Mech',
+    '22ESC14B':'Elements of Mechanical Engg',
+    '22ESC14C':'Elements of Electronics & Comm Engg',
+    '22ESC14D':'Elements of Electrical Engg',
+    '22ESC14E':'Elements of Chemical Engg',
+    '22ENG15':'Technical English',
+    '22KSK16':'Samskrutika Kannada',
+    '22KBK16':'Balake Kannada',
+    '22PHYP17':'Engineering Physics Lab',
+    '22CEIP18':'Civil Engg Innovation Practice',
+    '22MEL19':'Workshop / Mfg Practices',
+    '22PCCSL19':'Programming in C & C++ Lab',
+
+    /* ══════════════════════════════════════════════════════
+       2022 SCHEME — SEM 2 (Common)
+    ══════════════════════════════════════════════════════ */
+    '22MATS21':'Engineering Mathematics II',
+    '22MATDIP21':'Additional Mathematics II',
+    '22CHEMS22':'Engineering Chemistry',
+    '22CED23':'Engineering Drawing',
+    '22ESC24A':'Intro to CSE',
+    '22ESC24B':'Intro to ECE',
+    '22ESC24C':'Intro to EEE',
+    '22ESC24D':'Intro to Mech Engg',
+    '22ESC24E':'Intro to Chemical Engg',
+    '22ENG25':'Technical Communication',
+    '22CHEMP26':'Chemistry Lab',
+    '22MELP27':'Workshop / Mfg Practices Lab',
+    '22KSK28':'Samskrutika Kannada II',
+    '22KBK28':'Balake Kannada II',
+    '22PHL29':'Physics Lab',
+
+    /* ══════════════════════════════════════════════════════
+       2022 SCHEME — SEM 3 (CS/IS)
+    ══════════════════════════════════════════════════════ */
+    '22CS31':'Data Structures & Applications',
+    '22CS32':'Design & Analysis of Algorithms',
+    '22CS33':'Discrete Mathematical Structures',
+    '22CS34':'Database Management Systems',
+    '22CSL35':'Data Structures Lab',
+    '22CSL36':'DBMS Lab',
+    '22CIV37':'Constitution & Professional Ethics',
+    '22MAT31':'Transform Calculus & Numerical Methods',
+    '22MATDIP31':'Additional Mathematics III',
+
+    /* 2022 SEM 3 — ECE */
+    '22EC31':'Network Analysis',
+    '22EC32':'Electronic Devices',
+    '22EC33':'Digital System Design',
+    '22EC34':'Signals & Systems',
+    '22ECL35':'Electronic Devices Lab',
+    '22ECL36':'Digital System Design Lab',
+    '22MAT31EC':'Engineering Mathematics III (ECE)',
+
+    /* 2022 SEM 3 — EEE */
+    '22EE31':'DC Machines & Transformers',
+    '22EE32':'Network Analysis (EEE)',
+    '22EE33':'Electronic Circuits',
+    '22EE34':'Signals & Systems (EEE)',
+    '22EEL35':'DC Machines Lab',
+    '22EEL36':'Electronic Circuits Lab',
+
+    /* 2022 SEM 3 — Mech */
+    '22ME31':'Strength of Materials',
+    '22ME32':'Fluid Mechanics',
+    '22ME33':'Thermodynamics',
+    '22ME34':'Theory of Machines',
+    '22MEL35':'Fluid Mechanics Lab',
+    '22MEL36':'Strength of Materials Lab',
+    '22MAT31ME':'Engineering Mathematics III (Mech)',
+
+    /* 2022 SEM 3 — Civil */
+    '22CV31':'Surveying',
+    '22CV32':'Fluid Mechanics (Civil)',
+    '22CV33':'Strength of Materials (Civil)',
+    '22CV34':'Building Materials & Construction',
+    '22CVL35':'Surveying Lab',
+    '22CVL36':'Strength of Materials Lab (Civil)',
+
+    /* 2022 SEM 3 — AI/ML */
+    '22AI31':'Artificial Intelligence Fundamentals',
+    '22AI32':'Python Programming',
+    '22AI33':'Data Analytics',
+    '22AI34':'Statistics for AI',
+    '22AIL35':'Python Lab',
+    '22AIL36':'Data Analytics Lab',
+
+    /* ══════════════════════════════════════════════════════
+       2022 SCHEME — SEM 4
+    ══════════════════════════════════════════════════════ */
+    '22MAT41':'Complex Analysis, Probability & Statistics',
+    '22MATDIP41':'Additional Mathematics IV',
+    /* CS/IS SEM 4 */
+    '22CS41':'Microprocessors & Microcontrollers',
+    '22CS42':'Object-Oriented Programming with Java',
+    '22CS43':'Operating Systems',
+    '22CS44':'Formal Languages & Automata Theory',
+    '22CSL45':'Microprocessors Lab',
+    '22CSL46':'Java Lab',
+    '22CIV47':'Constitution & Professional Ethics',
+    '22CSPC45':'Microprocessors Lab (CS)',
+    /* ECE SEM 4 */
+    '22EC41':'Analog Circuits',
+    '22EC42':'Electromagnetic Waves',
+    '22EC43':'Control Systems',
+    '22EC44':'Analog Communication',
+    '22ECL45':'Analog Circuits Lab',
+    '22ECL46':'Communication Lab',
+    '22MAT41EC':'Complex Analysis & Probability (ECE)',
+    /* EEE SEM 4 */
+    '22EE41':'AC Machines',
+    '22EE42':'Power Systems',
+    '22EE43':'Control Systems (EEE)',
+    '22EE44':'Measurements & Instrumentation',
+    '22EEL45':'AC Machines Lab',
+    '22EEL46':'Control Systems Lab',
+    /* Mech SEM 4 */
+    '22ME41':'Machine Design',
+    '22ME42':'Heat & Mass Transfer',
+    '22ME43':'Manufacturing Processes',
+    '22ME44':'Kinematics & Dynamics',
+    '22MEL45':'Machine Design Lab',
+    '22MEL46':'Manufacturing Lab',
+    /* Civil SEM 4 */
+    '22CV41':'Structural Analysis',
+    '22CV42':'Geotechnical Engineering',
+    '22CV43':'Hydraulics & Hydraulic Machines',
+    '22CV44':'Environmental Engineering',
+    '22CVL45':'Concrete Technology Lab',
+    '22CVL46':'Hydraulics Lab (Civil)',
+    /* AI/ML SEM 4 */
+    '22AI41':'Machine Learning Fundamentals',
+    '22AI42':'Deep Learning',
+    '22AI43':'Natural Language Processing',
+    '22AI44':'Computer Vision',
+    '22AIL45':'ML Lab',
+    '22AIL46':'Deep Learning Lab',
+
+    /* ══════════════════════════════════════════════════════
+       2022 SCHEME — SEM 5
+    ══════════════════════════════════════════════════════ */
+    /* CS SEM 5 */
+    '22CS51':'Software Engineering & Project Mgmt',
+    '22CS52':'Computer Networks',
+    '22CS53':'Database Systems',
+    '22CS54':'Principles of Programming Languages',
+    '22CSL55':'Networks Lab',
+    '22CSL56':'DBMS Lab II',
+    '22CSP57':'Mini Project',
+    '22CS5A':'Professional Elective I (CS)',
+    '22CS5B':'Professional Elective II (CS)',
+    '22OE51':'Open Elective I',
+    '22OE52':'Open Elective II',
+    /* ECE SEM 5 */
+    '22EC51':'VLSI Design',
+    '22EC52':'Digital Signal Processing',
+    '22EC53':'Embedded Systems',
+    '22EC54':'Information Theory & Coding',
+    '22ECL55':'VLSI Lab',
+    '22ECL56':'DSP Lab',
+    '22EC5A':'Professional Elective I (ECE)',
+    /* EEE SEM 5 */
+    '22EE51':'Power Electronics',
+    '22EE52':'Electric Drives',
+    '22EE53':'Protection & Switchgear',
+    '22EE54':'Power Systems II',
+    '22EEL55':'Power Electronics Lab',
+    '22EEL56':'Simulation Lab',
+    /* Mech SEM 5 */
+    '22ME51':'CAD/CAM',
+    '22ME52':'Finite Element Analysis',
+    '22ME53':'Operations Research',
+    '22ME54':'Mechatronics',
+    '22MEL55':'CAD Lab',
+    '22MEL56':'FEA Lab',
+    /* Civil SEM 5 */
+    '22CV51':'Design of RC Structures',
+    '22CV52':'Transportation Engineering',
+    '22CV53':'Water Resources Engineering',
+    '22CV54':'Estimating & Costing',
+    '22CVL55':'Structural Design Lab',
+    '22CVL56':'Hydraulics Engineering Lab II',
+    /* AI/ML SEM 5 */
+    '22AI51':'Reinforcement Learning',
+    '22AI52':'Knowledge Representation',
+    '22AI53':'AI for Robotics',
+    '22AIL55':'Robotics Lab',
+    '22AIL56':'AI Applications Lab',
+
+    /* ══════════════════════════════════════════════════════
+       2022 SCHEME — SEM 6
+    ══════════════════════════════════════════════════════ */
+    /* CS SEM 6 */
+    '22CS61':'Machine Learning',
+    '22CS62':'Big Data Analytics',
+    '22CS63':'Information & Network Security',
+    '22CS64':'Cloud Computing',
+    '22CSL65':'ML Lab',
+    '22CSL66':'Cloud Lab',
+    '22CS6A':'Professional Elective III (CS)',
+    '22CS6B':'Professional Elective IV (CS)',
+    '22OE61':'Open Elective III',
+    '22OE62':'Open Elective IV',
+    /* ECE SEM 6 */
+    '22EC61':'Wireless Communication',
+    '22EC62':'Optical Fiber Communication',
+    '22EC63':'Image Processing',
+    '22EC64':'IoT & Applications',
+    '22ECL65':'Wireless Comm Lab',
+    '22ECL66':'IoT Lab',
+    /* EEE SEM 6 */
+    '22EE61':'Renewable Energy Systems',
+    '22EE62':'Smart Grid',
+    '22EE63':'High Voltage Engineering',
+    '22EE64':'Electrical Machine Design',
+    '22EEL65':'Smart Grid Lab',
+    '22EEL66':'HV Lab',
+    /* Mech SEM 6 */
+    '22ME61':'Robotics',
+    '22ME62':'Refrigeration & Air Conditioning',
+    '22ME63':'Power Plant Engineering',
+    '22ME64':'Industrial Engineering',
+    '22MEL65':'Robotics Lab',
+    '22MEL66':'Thermal Engineering Lab',
+    /* Civil SEM 6 */
+    '22CV61':'Foundation Engineering',
+    '22CV62':'Irrigation & Water Management',
+    '22CV63':'Construction Management',
+    '22CV64':'Advanced Concrete Technology',
+    '22CVL65':'Geotechnical Lab',
+    '22CVL66':'Irrigation Lab',
+
+    /* ══════════════════════════════════════════════════════
+       2022 SCHEME — SEM 7
+    ══════════════════════════════════════════════════════ */
+    /* CS SEM 7 */
+    '22CS71':'Deep Learning',
+    '22CS72':'Blockchain & Cryptography',
+    '22CS73':'Natural Language Processing',
+    '22CS74':'Computer Vision',
+    '22CSP75':'Mini Project II',
+    '22CSL76':'Advanced Lab',
+    '22CS7A':'Professional Elective V (CS)',
+    '22CS7B':'Professional Elective VI (CS)',
+    '22OE71':'Open Elective V',
+    /* ECE SEM 7 */
+    '22EC71':'Radar & Navigational Aids',
+    '22EC72':'Advanced Communication Systems',
+    '22EC73':'AI in Signal Processing',
+    '22ECL74':'Advanced ECE Lab',
+    '22EC7A':'Professional Elective V (ECE)',
+    /* EEE SEM 7 */
+    '22EE71':'FACTS & HVDC',
+    '22EE72':'Power Quality',
+    '22EE73':'Electric Vehicles',
+    '22EEL74':'Power Systems Lab',
+    /* Mech SEM 7 */
+    '22ME71':'Product Design & Development',
+    '22ME72':'Additive Manufacturing',
+    '22ME73':'Computational Fluid Dynamics',
+    '22MEL74':'Advanced Mfg Lab',
+    /* Civil SEM 7 */
+    '22CV71':'Earthquake Engineering',
+    '22CV72':'Remote Sensing & GIS',
+    '22CV73':'Urban & Rural Planning',
+    '22CVL74':'GIS & Remote Sensing Lab',
+    /* AI/ML SEM 7 */
+    '22AI71':'Generative AI',
+    '22AI72':'AI Ethics & Governance',
+    '22AI73':'Edge AI',
+    '22AIL74':'Advanced AI Lab',
+
+    /* ══════════════════════════════════════════════════════
+       2022 SCHEME — SEM 8
+    ══════════════════════════════════════════════════════ */
+    '22CSP81':'Project Work (CS)',
+    '22ECP81':'Project Work (ECE)',
+    '22EEP81':'Project Work (EEE)',
+    '22MEP81':'Project Work (Mech)',
+    '22CVP81':'Project Work (Civil)',
+    '22AIP81':'Project Work (AI/ML)',
+    '22INT81':'Internship',
+    '22ISP81':'Project Work (IS)',
+    '22CS81':'Professional Elective VII (CS)',
+    '22CS82':'Professional Elective VIII (CS)',
+    '22EC81':'Professional Elective VII (ECE)',
+    '22EC82':'Professional Elective VIII (ECE)',
+    '22EE81':'Professional Elective VII (EEE)',
+    '22ME81':'Professional Elective VII (Mech)',
+    '22CV81':'Professional Elective VII (Civil)',
+
+    /* ══════════════════════════════════════════════════════
+       2021 SCHEME — key subjects (backward compat)
+    ══════════════════════════════════════════════════════ */
+    '21CS31':'Data Structures','21CS32':'Design & Analysis of Algorithms',
+    '21CS33':'Discrete Mathematical Structures','21CS34':'Database Management Systems',
+    '21CSL35':'Data Structures Lab','21CSL36':'DBMS Lab','21CIV37':'Const. & Professional Ethics',
+    '21MAT31':'Engineering Mathematics-III','21MAT41':'Complex Analysis Prob & Stats',
+    '21CS41':'Microprocessors & Microcontrollers','21CS42':'OOP with Java',
+    '21CS43':'Operating Systems','21CS44':'Formal Languages & Automata Theory',
+    '21CSL45':'Microprocessors Lab','21CSL46':'Java Lab',
+    '21CS51':'Software Engg & Project Mgmt','21CS52':'Computer Networks',
+    '21CS53':'Database Systems','21CS54':'Principles of Prog Languages',
+    '21CSL55':'Networks Lab','21CSL56':'DBMS Lab II',
+    '21CS61':'Machine Learning','21CS62':'Big Data Analytics',
+    '21CS63':'Info & Network Security','21CS64':'Cloud Computing',
+    '21CSL65':'ML Lab','21CSL66':'Cloud Lab',
+    '21EC31':'Network Analysis','21EC32':'Electronic Devices',
+    '21EC33':'Digital System Design','21EC34':'Signals & Systems',
+    '21EC41':'Analog Circuits','21EC42':'Electromagnetic Waves',
+    '21EC43':'Control Systems','21EC44':'Analog Communication',
+    '21ME31':'Strength of Materials','21ME32':'Fluid Mechanics',
+    '21ME33':'Thermodynamics','21ME34':'Theory of Machines',
+    '21CV31':'Surveying','21CV32':'Fluid Mechanics (Civil)',
+    '21CV33':'Strength of Materials (Civil)','21CV34':'Building Materials',
+  };
+  return MAP[code]||code;
+}
+
+function dbg(msg){
+  debugLog.push(msg);
+  const el=document.getElementById('debugBox');
+  if(el){el.style.display='block';el.textContent=debugLog.slice(-60).join('\n');el.scrollTop=el.scrollHeight;}
+  const btn=document.getElementById('btnCopyDbg');
+  if(btn) btn.style.display='flex';
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   SECTION 3 — FILE & UI WIRING
+   ════════════════════════════════════════════════════════════════════ */
+document.getElementById('dz').addEventListener('dragover',e=>{e.preventDefault();document.getElementById('dz').classList.add('over')});
+document.getElementById('dz').addEventListener('dragleave',()=>document.getElementById('dz').classList.remove('over'));
+document.getElementById('dz').addEventListener('drop',e=>{e.preventDefault();document.getElementById('dz').classList.remove('over');go([...e.dataTransfer.files].filter(f=>f.name.endsWith('.pdf')))});
+document.getElementById('fi').addEventListener('change',function(){go([...this.files]);this.value='';});
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active');document.getElementById('p-'+t.dataset.t).classList.add('active');
+}));
+document.getElementById('btnClr').addEventListener('click',()=>{
+  students=[];debugLog=[];
+  document.getElementById('flist').innerHTML='';
+  document.getElementById('pbwrap').style.display='none';
+  document.getElementById('debugBox').style.display='none';
+  document.getElementById('debugBox').textContent='';
+  document.getElementById('btnCopyDbg').style.display='none';
+  updateStats();renderAll();
+  document.getElementById('btnDl').disabled=true;
+  document.getElementById('schemeInd').textContent='No data';
+});
+document.getElementById('btnDl').addEventListener('click',()=>generateExcel().catch(e=>{alert('Excel export failed: '+e.message);console.error(e);}));
+
+async function go(files){
+  if(!files.length) return;
+  document.getElementById('pbwrap').style.display='block';
+  for(let i=0;i<files.length;i++){
+    const f=files[i];const fid=f.name.replace(/\W/g,'_');
+    const el=document.createElement('div');el.className='fi';
+    el.innerHTML=`<span class="fst fp" id="fs_${fid}">·</span><span class="fn">${f.name}</span>`;
+    document.getElementById('flist').appendChild(el);
+    document.getElementById('pbfill').style.width=(i/files.length*100)+'%';
+    document.getElementById('pblbl').textContent=`Parsing ${i+1}/${files.length}: ${f.name}`;
+    const fsEl=document.getElementById('fs_'+fid);
+    if(fsEl){fsEl.className='fst fq';fsEl.textContent='↻';}
+    try{
+      const tokens=await extractTokens(f);
+      if(!tokens){dbg('ERROR: pdf.js not loaded');if(fsEl){fsEl.className='fst fe';fsEl.textContent='!';}continue;}
+      const s=parseTokens(tokens,f.name);
+      if(s&&s.subjects.length>0){
+        const ex=students.findIndex(x=>x.usn===s.usn);
+        if(ex>=0) students[ex]=s; else students.push(s);
+        if(fsEl){fsEl.className='fst fd';fsEl.textContent='✓';}
+      } else {
+        if(fsEl){fsEl.className='fst fe';fsEl.textContent='!';}
+        dbg('WARNING: 0 subjects in '+f.name);
+      }
+    }catch(e){
+      if(fsEl){fsEl.className='fst fe';fsEl.textContent='!';}
+      dbg('ERROR: '+e.message);
+    }
+    updateStats();renderAll();
+  }
+  document.getElementById('pbfill').style.width='100%';
+  document.getElementById('pblbl').textContent=`Complete — ${students.length} students parsed`;
+  if(students.length>0) document.getElementById('btnDl').disabled=false;
+}
+
+function updateStats(){
+  const tot=students.length;
+  const pass=students.filter(s=>s.overallStatus==='PASS').length;
+  const fail=students.filter(s=>s.overallStatus==='FAIL').length;
+  const pr=tot?(pass/tot*100).toFixed(1):0;
+  const sgpas=students.filter(s=>s.sgpa>0).map(s=>s.sgpa);
+  const avgS=sgpas.length?(sgpas.reduce((a,b)=>a+b,0)/sgpas.length).toFixed(2):'—';
+  document.getElementById('st-tot').textContent=tot;
+  document.getElementById('st-pass').textContent=pr+'%';
+  document.getElementById('st-fail').textContent=fail;
+  document.getElementById('st-sgpa').textContent=avgS;
+  const schemes=[...new Set(students.map(s=>s.scheme))];
+  document.getElementById('sbadges').innerHTML=schemes.length?schemes.map(sc=>`<span class="badge ${sc==='2025'?'b25':sc==='2023B'?'b23b':sc==='2022'?'b22':sc==='2021'?'b21':'bmx'}">${sc}</span>`).join(''):'<span style="font-size:10px;color:#9CA3AF">—</span>';
+  document.getElementById('schemeInd').textContent=schemes.length?schemes.join(' + '):'No data';
+}
+
+function renderAll(){renderDB();renderTop5();renderMarks();renderSum();renderSubj();renderCls();renderArr();}
+const allCodes=()=>[...new Set(students.flatMap(s=>s.subjects.map(x=>x.code)))].sort();
+const emptyEl=msg=>`<div class="es"><div class="es-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><p>${msg}</p></div>`;
+const stBadge=s=>s.overallStatus==='PASS'?`<span class="sp">${s.classification||'PASS'}</span>`:s.overallStatus==='DETAINED'?`<span class="sd">DETAINED</span>`:`<span class="sf">FAIL</span>`;
+
+function renderDB(){
+  const el=document.getElementById('p-db');
+  if(!students.length){el.innerHTML=emptyEl('Upload PDF result sheets to populate');return;}
+  const tot=students.length,pass=students.filter(s=>s.overallStatus==='PASS').length,fail=students.filter(s=>s.overallStatus==='FAIL').length,det=students.filter(s=>s.overallStatus==='DETAINED').length;
+  const sgpas=students.filter(s=>s.sgpa>0);const avgS=sgpas.length?+(sgpas.reduce((a,b)=>a+b.sgpa,0)/sgpas.length).toFixed(2):0;
+  const dis=students.filter(s=>s.classification==='Distinction').length;
+  const fc=students.filter(s=>s.classification==='First Class').length;
+  const arr=students.filter(s=>s.hasArrear).length;
+  const top5=[...students].sort((a,b)=>b.grandTotal-a.grandTotal).slice(0,5);
+  const rcls=['r1','r2','r3','rn','rn'];
+  const subMap={};students.forEach(s=>s.subjects.forEach(sub=>{if(!subMap[sub.code])subMap[sub.code]={name:sub.name,p:0,t:0};if(sub.result==='P')subMap[sub.code].p++;subMap[sub.code].t++;}));
+  el.innerHTML=`
+  <div class="kpi-grid">
+    <div class="kpi kpi-b"><div class="kv">${tot}</div><div class="kl">Total Students</div></div>
+    <div class="kpi kpi-g"><div class="kv">${tot?(pass/tot*100).toFixed(1):0}%</div><div class="kl">Pass Rate</div></div>
+    <div class="kpi kpi-r"><div class="kv">${fail}</div><div class="kl">Failed</div></div>
+    <div class="kpi kpi-a"><div class="kv">${det}</div><div class="kl">Detained</div></div>
+  </div>
+  <div class="kpi-grid">
+    <div class="kpi kpi-g"><div class="kv" style="font-size:20px">${avgS}</div><div class="kl">Avg SGPA</div></div>
+    <div class="kpi kpi-b"><div class="kv" style="font-size:20px">${dis}</div><div class="kl">Distinction</div></div>
+    <div class="kpi" style="background:#F9FAFB;border-color:#D1D5DB"><div class="kv" style="color:#374151;font-size:20px">${fc}</div><div class="kl" style="color:#6B7280">First Class</div></div>
+    <div class="kpi kpi-a"><div class="kv" style="font-size:20px">${arr}</div><div class="kl">Arrears</div></div>
+  </div>
+  <div class="db2c">
+    <div>
+      <div style="font-size:11px;font-weight:700;margin-bottom:8px;color:#1F4E79">Top 5 Performers</div>
+      ${top5.map((s,i)=>`<div class="t5item"><div class="t5rank ${rcls[i]}">${i+1}</div><div style="flex:1"><div style="font-size:11px;font-weight:600;color:#111827">${s.name}</div><div style="font-size:9px;color:#9CA3AF">${s.usn}</div></div><div style="text-align:right"><div style="font-size:11px;font-weight:700;color:#1F4E79">${s.sgpa}</div><div style="font-size:9px;color:#6B7280">SGPA</div></div></div>`).join('')}
+    </div>
+    <div>
+      <div style="font-size:11px;font-weight:700;margin-bottom:8px;color:#1F4E79">Subject Quality Index</div>
+      ${Object.entries(subMap).map(([code,d])=>{const qi=d.t?(d.p/d.t*100).toFixed(0):0;const col=qi>=75?'#059669':qi>=50?'#D97706':'#DC2626';return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px"><div style="font-size:9px;width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#6B7280">${d.name.split(' ').slice(0,2).join(' ')}</div><div style="flex:1;background:#E5E7EB;border-radius:3px;height:9px"><div style="height:100%;background:${col};width:${qi}%;border-radius:3px;transition:width .5s"></div></div><div style="font-size:9px;min-width:30px;text-align:right;color:#374151;font-weight:600">${qi}%</div></div>`;}).join('')}
+    </div>
+  </div>`;
+}
+
+function renderTop5(){
+  const el=document.getElementById('p-top5');
+  if(!students.length){el.innerHTML=emptyEl('No data');return;}
+  const top5=[...students].sort((a,b)=>b.grandTotal-a.grandTotal).slice(0,5);
+  const gbg=['#FFFBEB','#F9FAFB','#FFF1F2','',''];
+  let html=`<div class="tw"><table><thead><tr><th>Rank</th><th>USN</th><th>Name</th><th>Sub Code</th><th>Subject Name</th><th>Cr</th><th>Int</th><th>Ext</th><th>Total</th><th>GP</th><th>Grade</th><th>Result</th><th>Type</th><th>Grand Total</th><th>SGPA</th><th>Pct %</th></tr></thead><tbody>`;
+  top5.forEach((s,i)=>{
+    const bg=gbg[i];
+    s.subjects.forEach((sub,j)=>{
+      html+=`<tr style="${bg?'background:'+bg:''}">
+        <td style="font-weight:700">${j===0?i+1:''}</td><td>${j===0?s.usn:''}</td><td style="white-space:normal;min-width:110px">${j===0?s.name:''}</td>
+        <td>${sub.code}</td><td style="white-space:normal;min-width:120px">${sub.name}</td>
+        <td style="text-align:center">${sub.cr}</td><td style="text-align:center">${sub.internal}</td><td style="text-align:center">${sub.external}</td>
+        <td style="text-align:center;font-weight:700">${sub.total}</td><td style="text-align:center">${sub.gp}</td>
+        <td style="text-align:center;font-weight:600">${sub.grade}</td>
+        <td style="text-align:center">${sub.result==='P'?'<span class="sp">P</span>':'<span class="sf">F</span>'}</td>
+        <td style="text-align:center;font-size:9px;color:#6B7280">${sub.type}</td>
+        <td style="text-align:center;font-weight:700;color:#1F4E79">${j===0?s.grandTotal:''}</td>
+        <td style="text-align:center;font-weight:700;color:#059669">${j===0?s.sgpa:''}</td>
+        <td style="text-align:center">${j===0?s.percentage+'%':''}</td>
+      </tr>`;
+    });
+  });
+  el.innerHTML=html+`</tbody></table></div>`;
+}
+
+function renderMarks(){
+  const el=document.getElementById('p-marks');
+  if(!students.length){el.innerHTML=emptyEl('No data');return;}
+  const codes=allCodes();
+  let hdr1=`<tr><th rowspan="2">USN</th><th rowspan="2">Name</th><th rowspan="2">Status</th><th rowspan="2">GT</th><th rowspan="2">SGPA</th><th rowspan="2">Pct%</th><th rowspan="2">Class</th>`;
+  codes.forEach(c=>{hdr1+=`<th colspan="5" class="sh2">${codeLabel(c).split(' ').slice(0,2).join(' ')}</th>`;});
+  hdr1+=`</tr><tr>`;codes.forEach(()=>{hdr1+=`<th class="sh2">Int</th><th class="sh2">Ext</th><th class="sh2">Tot</th><th class="sh2">Res</th><th class="sh2">Type</th>`;});hdr1+=`</tr>`;
+  const rows=students.map((s,i)=>{
+    const stBg=s.overallStatus==='PASS'?'#ECFDF5':s.overallStatus==='DETAINED'?'#FFFBEB':'#FEF2F2';
+    const stFc=s.overallStatus==='PASS'?'#065F46':s.overallStatus==='DETAINED'?'#92400E':'#991B1B';
+    let cells=codes.map(code=>{
+      const sub=s.subjects.find(x=>x.code===code);
+      if(!sub) return `<td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>`;
+      const rTag=sub.result==='P'?'<span class="sp">P</span>':'<span class="sf">F</span>';
+      const aS=sub.isArrear?'background:#FFFF00!important;color:#412402!important;font-weight:700':'';
+      return `<td style="${aS};text-align:center">${sub.internal}</td><td style="${aS};text-align:center">${sub.external}</td><td style="${aS};text-align:center;font-weight:700">${sub.total}</td><td style="${aS};text-align:center">${rTag}</td><td style="${aS};text-align:center;font-size:9px;color:#6B7280">${sub.type}</td>`;
+    }).join('');
+    return `<tr class="${i%2===0?'':'z'}"><td style="white-space:nowrap;font-weight:600">${s.usn}</td><td style="white-space:nowrap">${s.name}</td><td><span style="background:${stBg};color:${stFc};border-radius:20px;padding:2px 7px;font-size:9px;font-weight:700">${s.overallStatus}</span></td><td style="text-align:center;font-weight:700">${s.grandTotal}</td><td style="text-align:center;font-weight:600;color:#059669">${s.sgpa}</td><td style="text-align:center">${s.percentage}%</td><td style="text-align:center;font-size:10px">${s.classification}</td>${cells}</tr>`;
+  }).join('');
+  el.innerHTML=`<div class="alrt ai">Wide format: ${codes.length} subjects × 5 columns each. Arrear cells = yellow. SGPA = Σ(GP×Cr)/Σ(Cr). Pct = (SGPA−0.75)×10</div><div class="tw"><table><thead>${hdr1}</thead><tbody>${rows}</tbody></table></div>`;
+}
+
+function renderSum(){
+  const el=document.getElementById('p-sum');
+  if(!students.length){el.innerHTML=emptyEl('No data');return;}
+  const codes=allCodes();
+  const rows=students.map((s,i)=>{
+    const cols=codes.map(code=>{const sub=s.subjects.find(x=>x.code===code);return `<td style="text-align:center">${sub?sub.total:'—'}</td>`;}).join('');
+    const pf=`P:${s.subjects.filter(x=>x.result==='P').length} F:${s.subjects.filter(x=>x.result==='F').length}`;
+    return `<tr class="${i%2===0?'':'z'}"><td style="font-weight:600">${s.usn}</td><td>${s.name}</td>${cols}<td style="text-align:center;font-weight:700">${s.grandTotal}</td><td style="font-size:9px">${pf}</td><td style="text-align:center;font-weight:600;color:#059669">${s.sgpa}</td><td style="text-align:center">${s.percentage}%</td><td style="text-align:center">${stBadge(s)}</td></tr>`;
+  }).join('');
+  const pass=students.filter(s=>s.overallStatus==='PASS').length,fail=students.filter(s=>s.overallStatus==='FAIL').length,det=students.filter(s=>s.overallStatus==='DETAINED').length;
+  const sg=students.filter(s=>s.sgpa>0);const avgSg=sg.length?(sg.reduce((a,b)=>a+b.sgpa,0)/sg.length).toFixed(2):0;
+  el.innerHTML=`<div class="alrt ag">Total: ${students.length} · Pass: ${pass} · Fail: ${fail} · Detained: ${det} · Avg SGPA: ${avgSg}</div><div class="tw"><table><thead><tr><th>USN</th><th>Name</th>${codes.map(c=>`<th>${codeLabel(c).split(' ').slice(0,2).join(' ')}</th>`).join('')}<th>Grand Total</th><th>P/F</th><th>SGPA</th><th>Pct %</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+function renderSubj(){
+  const el=document.getElementById('p-subj');
+  if(!students.length){el.innerHTML=emptyEl('No data');return;}
+  const sm={};
+  students.forEach(s=>s.subjects.forEach(sub=>{
+    if(!sm[sub.code]) sm[sub.code]={name:sub.name,cr:sub.cr,ints:[],exts:[],tots:[],pass:0,fail:0,abs:0,tot:0};
+    const d=sm[sub.code];
+    if(typeof sub.internal==='number') d.ints.push(sub.internal);
+    if(typeof sub.external==='number') d.exts.push(sub.external);
+    if(typeof sub.total==='number') d.tots.push(sub.total);
+    if(sub.result==='P') d.pass++;
+    else if(['AB','NE','X'].includes(String(sub.internal).toUpperCase())) d.abs++;
+    else d.fail++;
+    d.tot++;
+  }));
+  const avg=a=>a.length?+(a.reduce((x,y)=>x+y,0)/a.length).toFixed(1):0;
+  const rows=Object.entries(sm).sort((a,b)=>a[0].localeCompare(b[0])).map(([code,d],i)=>{
+    const qi=d.tot?(d.pass/d.tot*100).toFixed(1):0;
+    const qiTag=qi>=75?`<span class="qg">${qi}%</span>`:qi>=50?`<span class="qa">${qi}%</span>`:`<span class="qr">${qi}%</span>`;
+    return `<tr class="${i%2===0?'':'z'}"><td style="font-weight:600">${code}</td><td style="white-space:normal;min-width:140px">${d.name}</td><td style="text-align:center">${d.cr}</td><td style="text-align:center">${avg(d.ints)}</td><td style="text-align:center">${avg(d.exts)}</td><td style="text-align:center">${avg(d.tots)}</td><td style="text-align:center">${d.tots.length?Math.max(...d.tots):'—'}</td><td style="text-align:center">${d.tots.length?Math.min(...d.tots):'—'}</td><td style="text-align:center">${d.pass}</td><td style="text-align:center">${d.fail}</td><td style="text-align:center">${d.abs}</td><td style="text-align:center">${qiTag}</td></tr>`;
+  }).join('');
+  el.innerHTML=`<div class="alrt ai">Quality index = pass rate per subject · Green ≥75% · Amber 50–74% · Red &lt;50%</div><div class="tw"><table><thead><tr><th>Code</th><th>Subject Name</th><th>Cr</th><th>Avg Int</th><th>Avg Ext</th><th>Avg Total</th><th>Highest</th><th>Lowest</th><th>Pass</th><th>Fail</th><th>Absent</th><th>Quality Index</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+function renderCls(){
+  const el=document.getElementById('p-cls');
+  if(!students.length){el.innerHTML=emptyEl('No data');return;}
+  const dis=students.filter(s=>s.classification==='Distinction').sort((a,b)=>b.sgpa-a.sgpa);
+  const fc=students.filter(s=>s.classification==='First Class').sort((a,b)=>b.sgpa-a.sgpa);
+  const sc=students.filter(s=>s.classification==='Second Class').sort((a,b)=>b.sgpa-a.sgpa);
+  const mkT=(list,title,hdBg,rowBg)=>{
+    if(!list.length) return `<div style="font-size:11px;font-weight:700;margin:10px 0 4px;color:${hdBg}">${title}</div><div style="font-size:10px;color:#9CA3AF;padding:3px 0">None in this category</div>`;
+    return `<div style="font-size:11px;font-weight:700;margin:10px 0 4px;color:${hdBg}">${title} (${list.length})</div><div class="tw" style="max-height:175px"><table><thead><tr><th style="background:${hdBg}">USN</th><th style="background:${hdBg}">Name</th><th style="background:${hdBg}">SGPA</th><th style="background:${hdBg}">Pct %</th><th style="background:${hdBg}">Classification</th><th style="background:${hdBg}">Arrears</th></tr></thead><tbody>${list.map((s,i)=>`<tr class="${i%2===0?'':'z'}" style="${rowBg?'background:'+rowBg:''}"><td style="font-weight:600">${s.usn}</td><td>${s.name}</td><td style="text-align:center;font-weight:700">${s.sgpa}</td><td style="text-align:center">${s.percentage}%</td><td style="text-align:center">${s.classification}</td><td style="text-align:center">${s.hasArrear?'<span class="sd">Yes</span>':'—'}</td></tr>`).join('')}</tbody></table></div>`;
+  };
+  el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:11px">
+    <div class="kpi kpi-b"><div class="kv">${dis.length}</div><div class="kl">Distinction (≥ 7.75)</div></div>
+    <div class="kpi" style="background:#F9FAFB;border-color:#D1D5DB"><div class="kv" style="color:#374151">${fc.length}</div><div class="kl" style="color:#6B7280">First Class (6.75–7.74)</div></div>
+    <div class="kpi kpi-a"><div class="kv">${sc.length}</div><div class="kl">Second Class (&lt; 6.75)</div></div>
+  </div>
+  ${mkT(dis,'🏅 Distinction — SGPA ≥ 7.75','#1F4E79','#FFFDE7')}
+  ${mkT(fc,'🎖 First Class — SGPA 6.75 to 7.74','#2E75B6','#F0F9FF')}
+  ${mkT(sc,'📘 Second Class — SGPA < 6.75','#378ADD','')}`;
+}
+
+function renderArr(){
+  const el=document.getElementById('p-arr');
+  const arr=students.filter(s=>s.hasArrear);
+  if(!arr.length){el.innerHTML='<div class="es"><p>✅ No arrears detected — all students are current semester</p></div>';return;}
+  const rows=arr.flatMap(s=>s.subjects.filter(x=>x.isArrear).map((sub,j)=>`<tr class="arr-row"><td style="font-weight:700">${j===0?s.usn:''}</td><td>${j===0?s.name:''}</td><td style="text-align:center">${j===0?s.semester:''}</td><td>${sub.code}</td><td style="white-space:normal">${sub.name}</td><td style="text-align:center">${sub.semester}</td><td style="text-align:center"><span class="sf">BACKLOG</span></td></tr>`)).join('');
+  el.innerHTML=`<div class="alrt aw">⚠ ${arr.length} student(s) with active backlogs detected — highlighted in bold yellow</div><div class="tw"><table><thead><tr><th>USN</th><th>Name</th><th>Current Sem</th><th>Arrear Code</th><th>Arrear Subject</th><th>Arrear Sem</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   SECTION 4 — EXCEL GENERATION  v4.9  (ExcelJS engine)
+   ExcelJS natively renders colors, borders, and fonts without any
+   "Pro" license. All styles are applied directly to cell objects.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ── Rank colour palette ─────────────────────────────────────────── */
+const RANK_EMOJI = ['🥇','🥈','🥉','  4','  5'];
+const RANK_BG    = ['FFD700','C0C0C0','CD7F32','F5F5F5','FFFFFF'];
+const RANK_FC    = ['7B4200','3A3A3A','4A2400','374151','374151'];
+
+/* ── applyStyle() : apply ExcelJS style object to a cell ─────────── */
+function applyStyle(cell, o={}){
+  const argb = h => 'FF'+(h||'FFFFFF').replace(/^#/,'').toUpperCase().padEnd(6,'F').slice(0,6);
+  cell.font = {
+    name: 'Calibri',
+    size: o.sz || 10,
+    bold: !!o.bold,
+    color: { argb: argb(o.fc || '000000') }
+  };
+  cell.fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: argb(o.bg || 'FFFFFF') }
+  };
+  cell.alignment = {
+    horizontal: o.al || 'left',
+    vertical: 'middle',
+    wrapText: !!o.wrap
+  };
+  const bc = { style: 'thin', color: { argb: 'FFD0D0D0' } };
+  cell.border = { top: bc, bottom: bc, left: bc, right: bc };
+}
+
+/* ── Style shorthand helpers (return option objects) ─────────────── */
+const _H   = () => ({ bg:'1F4E79', fc:'FFFFFF', bold:true, sz:11, al:'center' });
+const _SH  = () => ({ bg:'2E75B6', fc:'FFFFFF', bold:true, sz:10, al:'center' });
+const _SH2 = () => ({ bg:'2E75B6', fc:'FFFFFF', bold:true, sz:9,  al:'center' });
+const _Z   = (i,al) => ({ bg:i%2===0?'FFFFFF':'EEF3FA', al:al||'left' });
+const _ZC  = i     => ({ bg:i%2===0?'FFFFFF':'EEF3FA', al:'center' });
+const _ARR = () => ({ bg:'FFFF00', fc:'412402', bold:true, sz:10, al:'center' });
+const _ST  = st =>
+  st==='PASS'     ? { bg:'EAF3DE', fc:'27500A', bold:true, sz:10, al:'center' } :
+  st==='DETAINED' ? { bg:'FAEEDA', fc:'854F0B', bold:true, sz:10, al:'center' } :
+                    { bg:'FCEBEB', fc:'791F1F', bold:true, sz:10, al:'center' };
+
+/* ── addHdr() : rows 1–3, dark-blue institutional header ─────────── */
+function addHdr(ws, title, cols){
+  const schemes = [...new Set(students.map(s=>s.scheme))].join(', ');
+  const gen = `Generated: ${new Date().toLocaleDateString('en-IN')} \u2502 Schemes: ${schemes} \u2502 SGPA=\u03A3(GP\u00D7Cr)/\u03A3(Cr) \u2502 Pct=(SGPA\u22120.75)\u00D710`;
+
+  // Row 1 — institution branding
+  ws.getRow(1).height = 21;
+  const r1c1 = ws.getCell(1,1);
+  r1c1.value = 'JAIN COLLEGE OF ENGINEERING, BELAGAVI  \u2014  VTU Result Analysis  \u2502  SES Admin  \u2502  Dr. Shivkumar Math';
+  applyStyle(r1c1, { bg:'1F4E79', fc:'FFFFFF', bold:true, sz:13, al:'center' });
+  ws.mergeCells(1,1,1,cols);
+
+  // Row 2 — sheet title
+  ws.getRow(2).height = 15;
+  const r2c1 = ws.getCell(2,1);
+  r2c1.value = `${title}   \u2502   Total Students: ${students.length}`;
+  applyStyle(r2c1, { bg:'1F4E79', fc:'FFFFFF', bold:true, sz:10, al:'center' });
+  ws.mergeCells(2,1,2,cols);
+
+  // Row 3 — formula/gen info
+  ws.getRow(3).height = 12;
+  const r3c1 = ws.getCell(3,1);
+  r3c1.value = gen;
+  applyStyle(r3c1, { bg:'2E75B6', fc:'FFFFFF', sz:9, al:'center' });
+  ws.mergeCells(3,1,3,cols);
+}
+
+/* ── addFtr() : footer row — "SHIVA's Digital Ecosystem" branding ── */
+function addFtr(ws, rowNum, cols){
+  const v = "\u{1F4BB}  SHIVA\u2019s Digital Ecosystem  \u2014  SES Admin  \u2014  Dr. Shivkumar Math, HOD Physics, JCE Belagavi"
+           +"     \u2502     "+new Date().toLocaleString('en-IN');
+  ws.getRow(rowNum).height = 15;
+  const cell = ws.getCell(rowNum, 1);
+  cell.value = v;
+  applyStyle(cell, { bg:'1F4E79', fc:'FFFFFF', bold:true, sz:9, al:'center' });
+  ws.mergeCells(rowNum, 1, rowNum, cols);
+}
+
+/* ── generateExcel() : entry point ──────────────────────────────────
+   Uses ExcelJS which natively supports colors, borders, and fonts
+   without requiring any paid license. Outputs a true .xlsx blob.
+   ──────────────────────────────────────────────────────────────────── */
+async function generateExcel(){
+  if(typeof ExcelJS==='undefined'){
+    alert('ExcelJS library failed to load. Please check your internet connection.');
+    return;
+  }
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'SES Admin — Dr. Shivkumar Math';
+  wb.created = new Date();
+
+  buildDash(wb);
+  buildTop5XL(wb);
+  buildDetailedMarks(wb);
+  buildSummaryXL(wb);
+  buildSubjectAnalysis(wb);
+  buildClassXL(wb);
+
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `SES_VTU_Analysis_JCE_${new Date().toISOString().slice(0,10)}.xlsx`;
+  a.click();
+}
+
+/* ── buildDash() : Dashboard — KPI tiles + Top 5 mini-table ─────── */
+function buildDash(wb){
+  const ws = wb.addWorksheet('Dashboard');
+  const cols = 16;
+  ws.views = [{ state:'frozen', xSplit:0, ySplit:3 }];
+  for(let c=1;c<=cols;c++) ws.getColumn(c).width=10;
+  ws.getColumn(3).width=32; ws.getColumn(2).width=16; ws.getColumn(5).width=28; ws.getColumn(6).width=14;
+
+  addHdr(ws,'Dashboard \u2014 KPI Overview',cols);
+
+  const tot=students.length,
+        pass=students.filter(s=>s.overallStatus==='PASS').length,
+        fail=students.filter(s=>s.overallStatus==='FAIL').length,
+        det =students.filter(s=>s.overallStatus==='DETAINED').length;
+  const pr=tot?(pass/tot*100).toFixed(1):0;
+  const sg=students.filter(s=>s.sgpa>0);
+  const avgS=sg.length?+(sg.reduce((a,b)=>a+b.sgpa,0)/sg.length).toFixed(2):0;
+  const arr=students.filter(s=>s.hasArrear).length;
+
+  const kpis=[
+    ['TOTAL STUDENTS','DDEEFF','0C447C',tot],
+    ['PASSED',        'DDFFDD','1A6E1A',pass],
+    ['FAILED',        'FFDDDD','8B0000',fail],
+    ['PASS RATE %',   'DDEEFF','185FA5',+pr],
+    ['DETAINED',      'FFEEDD','7B4F00',det],
+    ['AVG SGPA',      'EEFFEE','1A6E1A',avgS],
+    ['ARREARS',       'FAEEDA','854F0B',arr],
+    ['FAIL RATE %',   'FFDDDD','8B0000',tot?+(((fail/tot)*100).toFixed(1)):0]
+  ];
+
+  kpis.forEach(([lbl,bg,fc,val],i)=>{
+    const exRow=4+Math.floor(i/4)*2, exCol=(i%4)*4+1;
+    ws.getRow(exRow).height=18;ws.getRow(exRow+1).height=26;
+    const lc=ws.getCell(exRow,exCol);
+    lc.value=lbl; applyStyle(lc,{bg,fc,bold:true,sz:11,al:'center'});
+    ws.mergeCells(exRow,exCol,exRow,exCol+3);
+    const vc=ws.getCell(exRow+1,exCol);
+    vc.value=val; applyStyle(vc,{bg,fc,bold:true,sz:18,al:'center'});
+    ws.mergeCells(exRow+1,exCol,exRow+1,exCol+3);
+  });
+
+  // Top-5 mini-table
+  let r=10;
+  ['Rank','USN','Student Name','SGPA','Pct % = (SGPA\u22120.75)\u00D710','Grand Total']
+    .forEach((h,c)=>{ const cell=ws.getCell(r,c+1); cell.value=h; applyStyle(cell,_SH()); });
+  r++;
+  const top5=[...students].sort((a,b)=>b.grandTotal-a.grandTotal).slice(0,5);
+  top5.forEach((s,i)=>{
+    ws.getRow(r).height=14;
+    [RANK_EMOJI[i]+' '+(i+1),s.usn,s.name,s.sgpa,s.percentage,s.grandTotal]
+      .forEach((v,c)=>{
+        const cell=ws.getCell(r,c+1);
+        cell.value=v;
+        applyStyle(cell,{bg:RANK_BG[i],fc:RANK_FC[i],bold:i<3,sz:11,al:c===2?'left':'center'});
+      });
+    r++;
+  });
+
+  addFtr(ws,r+2,cols);
+}
+
+/* ── buildTop5XL() : Full subject-level Top 5 breakdown ─────────── */
+function buildTop5XL(wb){
+  const ws=wb.addWorksheet('Top 5 Performers');
+  const cols=16;
+  ws.views=[{state:'frozen',xSplit:3,ySplit:4}];
+  [10,16,32,16,40,5,7,7,7,5,7,7,12,14,9,12].forEach((w,i)=>ws.getColumn(i+1).width=w);
+
+  addHdr(ws,'Top 5 Performers',cols);
+
+  ['Rank','USN','Name','Sub Code','Subject Name','Cr','Int','Ext','Total','GP','Grade','Result','Type','Grand Total','SGPA','Pct %']
+    .forEach((h,c)=>{ const cell=ws.getCell(4,c+1); cell.value=h; applyStyle(cell,_SH()); });
+
+  const top5=[...students].sort((a,b)=>b.grandTotal-a.grandTotal).slice(0,5);
+  let r=5;
+  top5.forEach((s,i)=>{
+    const banner=`${RANK_EMOJI[i]}  RANK ${i+1}  \u2502  ${s.usn}  \u2502  ${s.name}  \u2502  Grand Total: ${s.grandTotal}  \u2502  SGPA: ${s.sgpa}  \u2502  Pct: ${s.percentage}%`;
+    ws.getRow(r).height=15;
+    const bc=ws.getCell(r,1); bc.value=banner;
+    applyStyle(bc,{bg:RANK_BG[i],fc:RANK_FC[i],bold:true,sz:11,al:'left'});
+    ws.mergeCells(r,1,r,cols); r++;
+
+    s.subjects.forEach(sub=>{
+      ws.getRow(r).height=13;
+      [i+1,s.usn,s.name,sub.code,sub.name,sub.cr,sub.internal,sub.external,sub.total,sub.gp,sub.grade,sub.result,sub.type,s.grandTotal,s.sgpa,s.percentage]
+        .forEach((v,c)=>{
+          const vv=v===null||v===undefined?'':v;
+          const cell=ws.getCell(r,c+1);
+          cell.value=vv;
+          if(sub.isArrear){
+            applyStyle(cell,_ARR());
+          } else if(c===0){
+            applyStyle(cell,{bg:RANK_BG[i],fc:RANK_FC[i],bold:true,sz:10,al:'center'});
+          } else if(c<3){
+            applyStyle(cell,{bg:RANK_BG[i]||'FFFFFF',fc:RANK_FC[i]||'000000',sz:10,al:'left'});
+          } else {
+            applyStyle(cell,{bg:RANK_BG[i]||'FFFFFF',fc:RANK_FC[i]||'000000',sz:10,al:'center'});
+          }
+        });
+      r++;
+    });
+    r++;
+  });
+
+  addFtr(ws,r+2,cols);
+}
+
+/* ── buildDetailedMarks() : Wide per-subject marks matrix ────────── */
+function buildDetailedMarks(wb){
+  const ws=wb.addWorksheet('Detailed Marks');
+  const codes=allCodes();const fixedCols=7;const cols=fixedCols+codes.length*5;
+  ws.views=[{state:'frozen',xSplit:2,ySplit:5}];
+  [16,32,11,12,8,12,16].forEach((w,i)=>ws.getColumn(i+1).width=w);
+  codes.forEach((_,i)=>{
+    const base=fixedCols+i*5;
+    [6,6,7,6,9].forEach((w,j)=>ws.getColumn(base+j+1).width=w);
+  });
+
+  addHdr(ws,'Detailed Marks \u2014 Wide Format',cols);
+
+  // Double-row fixed headers (rows 4+5, merged vertically)
+  ['USN','Name','Status','Grand Total','SGPA','Pct %','Classification']
+    .forEach((h,c)=>{
+      const cell=ws.getCell(4,c+1); cell.value=h; applyStyle(cell,_SH());
+      const cell2=ws.getCell(5,c+1); cell2.value=''; applyStyle(cell2,_SH());
+      ws.mergeCells(4,c+1,5,c+1);
+    });
+
+  codes.forEach((code,i)=>{
+    const base=fixedCols+i*5+1;
+    const fullLabel=codeLabel(code);
+    const sn=(fullLabel&&fullLabel!==code)?fullLabel.substring(0,42):code;
+    const hc=ws.getCell(4,base); hc.value=sn; applyStyle(hc,_SH());
+    ws.mergeCells(4,base,4,base+4);
+    ['Int','Ext','Total','Res','Type'].forEach((h,j)=>{
+      const cell=ws.getCell(5,base+j); cell.value=h; applyStyle(cell,_SH2());
+    });
+  });
+
+  students.forEach((s,si)=>{
+    const r=6+si;
+    ws.getRow(r).height=13;
+    [s.usn,s.name,s.overallStatus,s.grandTotal,s.sgpa,s.percentage,s.classification]
+      .forEach((v,c)=>{
+        const cell=ws.getCell(r,c+1);
+        cell.value=v===null||v===undefined?'':v;
+        applyStyle(cell, c===2 ? _ST(s.overallStatus) : _Z(si,c>2?'center':'left'));
+      });
+    codes.forEach((code)=>{
+      const sub=s.subjects.find(x=>x.code===code);
+      const base=fixedCols+codes.indexOf(code)*5+1;
+      if(!sub){
+        for(let c=base;c<base+5;c++){ const cell=ws.getCell(r,c); cell.value='\u2014'; applyStyle(cell,_ZC(si)); }
+        return;
+      }
+      [sub.internal,sub.external,sub.total,sub.result,sub.type||'REGULAR']
+        .forEach((v,j)=>{
+          const cell=ws.getCell(r,base+j);
+          cell.value=v===null||v===undefined?'':v;
+          if(sub.isArrear){
+            applyStyle(cell,_ARR());
+          } else if(j===3){
+            applyStyle(cell, sub.result==='P'
+              ? {bg:'EAF3DE',fc:'27500A',bold:true,sz:9,al:'center'}
+              : {bg:'FCEBEB',fc:'791F1F',bold:true,sz:9,al:'center'});
+          } else {
+            applyStyle(cell,_ZC(si));
+          }
+        });
+    });
+  });
+
+  addFtr(ws,6+students.length+2,cols);
+}
+
+/* ── buildSummaryXL() : Compact totals-only summary ─────────────── */
+function buildSummaryXL(wb){
+  const ws=wb.addWorksheet('Result Summary');
+  const codes=allCodes();const cols=4+codes.length+4;
+  ws.views=[{state:'frozen',xSplit:2,ySplit:4}];
+  ws.getColumn(1).width=16; ws.getColumn(2).width=32;
+  codes.forEach((_,i)=>ws.getColumn(3+i).width=12);
+  [13,13,9,12,16].forEach((w,i)=>ws.getColumn(3+codes.length+i).width=w);
+
+  addHdr(ws,'Result Summary',cols);
+
+  ['USN','Name',
+   ...codes.map(c=>codeLabel(c).split(' ').slice(0,3).join(' ')),
+   'Grand Total','P / F','SGPA','Pct %','Status']
+    .forEach((h,c)=>{ const cell=ws.getCell(4,c+1); cell.value=h; applyStyle(cell,_SH()); });
+
+  students.forEach((s,si)=>{
+    const r=5+si;
+    ws.getRow(r).height=13;
+    const row=[s.usn,s.name,
+      ...codes.map(code=>{const sub=s.subjects.find(x=>x.code===code);return sub?sub.total:'\u2014';}),
+      s.grandTotal,
+      `P:${s.subjects.filter(x=>x.result==='P').length}  F:${s.subjects.filter(x=>x.result==='F').length}`,
+      s.sgpa,s.percentage
+    ];
+    row.forEach((v,c)=>{
+      const cell=ws.getCell(r,c+1);
+      cell.value=v===null||v===undefined?'':v;
+      applyStyle(cell, c<2?_Z(si):_ZC(si));
+    });
+    const sc=ws.getCell(r,cols); sc.value=s.classification||s.overallStatus;
+    applyStyle(sc,_ST(s.overallStatus));
+  });
+
+  // Class statistics block
+  const sr=5+students.length+2;
+  const stc=ws.getCell(sr,1); stc.value='CLASS STATISTICS';
+  applyStyle(stc,_H()); ws.mergeCells(sr,1,sr,cols);
+
+  const pass=students.filter(s=>s.overallStatus==='PASS').length;
+  const sg=students.filter(s=>s.sgpa>0);
+  [
+    ['Total Students',   students.length],
+    ['Pass',             pass],
+    ['Fail',             students.filter(s=>s.overallStatus==='FAIL').length],
+    ['Detained',         students.filter(s=>s.overallStatus==='DETAINED').length],
+    ['Pass %',           +(students.length?(pass/students.length*100).toFixed(1):0)],
+    ['Avg SGPA (credit-weighted)', +(sg.length?(sg.reduce((a,b)=>a+b.sgpa,0)/sg.length).toFixed(2):0)],
+    ['With Arrears',     students.filter(s=>s.hasArrear).length]
+  ].forEach(([k,v],i)=>{
+    const kc=ws.getCell(sr+1+i,1); kc.value=k; applyStyle(kc,{bg:'E6EEF5',fc:'1F4E79',bold:true,sz:10,al:'left'});
+    const vc=ws.getCell(sr+1+i,2); vc.value=v; applyStyle(vc,{bg:'FFFFFF',sz:11,bold:true,al:'center'});
+  });
+
+  addFtr(ws,sr+10,cols);
+}
+
+/* ── buildSubjectAnalysis() : Per-subject performance stats ──────── */
+function buildSubjectAnalysis(wb){
+  const ws=wb.addWorksheet('Subject Analysis');
+  const cols=13;
+  ws.views=[{state:'frozen',xSplit:2,ySplit:4}];
+  [16,42,5,13,13,11,11,11,8,8,9,9,15].forEach((w,i)=>ws.getColumn(i+1).width=w);
+
+  addHdr(ws,'Subject-Wise Performance Analysis',cols);
+
+  ['Subject Code','Subject Name','Cr','Avg Internal','Avg External','Avg Total','Highest','Lowest','Pass','Fail','Absent','Pass %','Quality Index']
+    .forEach((h,c)=>{ const cell=ws.getCell(4,c+1); cell.value=h; applyStyle(cell,_SH()); });
+
+  const sm={};
+  students.forEach(s=>s.subjects.forEach(sub=>{
+    if(!sm[sub.code]) sm[sub.code]={name:sub.name,cr:sub.cr,ints:[],exts:[],tots:[],pass:0,fail:0,abs:0,tot:0};
+    const d=sm[sub.code];
+    if(typeof sub.internal==='number') d.ints.push(sub.internal);
+    if(typeof sub.external==='number') d.exts.push(sub.external);
+    if(typeof sub.total  ==='number') d.tots.push(sub.total);
+    if(sub.result==='P') d.pass++;
+    else if(['AB','NE','X'].includes(String(sub.internal).toUpperCase())) d.abs++;
+    else d.fail++;
+    d.tot++;
+  }));
+  const avg=a=>a.length?+(a.reduce((x,y)=>x+y,0)/a.length).toFixed(1):0;
+
+  Object.entries(sm).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([code,d],i)=>{
+    const r=5+i;
+    ws.getRow(r).height=13;
+    const qi=d.tot?+(d.pass/d.tot*100).toFixed(1):0;
+    const qBg=qi>=75?'EAF3DE':qi>=50?'FAEEDA':'FCEBEB';
+    const qFc=qi>=75?'27500A':qi>=50?'854F0B':'791F1F';
+    [code,d.name,d.cr,avg(d.ints),avg(d.exts),avg(d.tots),
+     d.tots.length?Math.max(...d.tots):0,
+     d.tots.length?Math.min(...d.tots):0,
+     d.pass,d.fail,d.abs,
+     d.tot?+(d.pass/d.tot*100).toFixed(0):0]
+      .forEach((v,c)=>{
+        const cell=ws.getCell(r,c+1); cell.value=v;
+        applyStyle(cell, c===1?_Z(i,'left'):_ZC(i));
+      });
+    const qc=ws.getCell(r,13); qc.value=qi;
+    applyStyle(qc,{bg:qBg,fc:qFc,bold:true,sz:10,al:'center'});
+  });
+
+  addFtr(ws,5+Object.keys(sm).length+2,cols);
+}
+
+/* ── buildClassXL() : SGPA-based classification lists ───────────── */
+function buildClassXL(wb){
+  const ws=wb.addWorksheet('Result Classification');
+  const cols=8;
+  ws.views=[{state:'frozen',xSplit:2,ySplit:3}];
+  [16,34,9,12,16,12,9,24].forEach((w,i)=>ws.getColumn(i+1).width=w);
+
+  addHdr(ws,'Result Classification \u2014 SGPA Based',cols);
+
+  const dis=students.filter(s=>s.classification==='Distinction').sort((a,b)=>b.sgpa-a.sgpa);
+  const fc =students.filter(s=>s.classification==='First Class') .sort((a,b)=>b.sgpa-a.sgpa);
+  const sc =students.filter(s=>s.classification==='Second Class').sort((a,b)=>b.sgpa-a.sgpa);
+
+  [
+    ['DISTINCTION  \u2265 7.75', 'E6F1FB','0C447C',dis.length],
+    ['FIRST CLASS  6.75 \u2013 7.74','F1EFE8','2C5F0A',fc.length],
+    ['SECOND CLASS  < 6.75',     'FAEEDA','412402',sc.length],
+    ['TOTAL CLASSIFIED',          'EAF3DE','27500A',dis.length+fc.length+sc.length]
+  ].forEach(([lbl,bg,fc2,val],i)=>{
+    const col=i*2+1;
+    ws.getRow(4).height=15; ws.getRow(5).height=24;
+    const lc=ws.getCell(4,col); lc.value=lbl; applyStyle(lc,{bg,fc:fc2,bold:true,sz:10,al:'center'});
+    ws.mergeCells(4,col,4,col+1);
+    const vc=ws.getCell(5,col); vc.value=val; applyStyle(vc,{bg,fc:fc2,bold:true,sz:20,al:'center'});
+    ws.mergeCells(5,col,5,col+1);
+  });
+
+  let r=7;
+  const addSec=(list,title,hdBg,rowBgEven,rowBgOdd)=>{
+    ws.getRow(r).height=15;
+    const tc=ws.getCell(r,1); tc.value=title;
+    applyStyle(tc,{bg:hdBg,fc:'FFFFFF',bold:true,sz:11,al:'left'});
+    ws.mergeCells(r,1,r,cols); r++;
+
+    ['USN','Student Name','SGPA','Pct %','Classification','Status','Arrears','Arrear Codes']
+      .forEach((h,c)=>{ const cell=ws.getCell(r,c+1); cell.value=h; applyStyle(cell,_SH()); });
+    r++;
+
+    if(!list.length){
+      const nc=ws.getCell(r,1); nc.value='None in this category';
+      applyStyle(nc,{bg:'F5F5F5',fc:'9CA3AF',sz:10,al:'left'});
+      ws.mergeCells(r,1,r,cols); r++;
+    } else {
+      list.forEach((s,i)=>{
+        const rowBg=i%2===0?rowBgEven:rowBgOdd;
+        const arrCodes=s.hasArrear?s.subjects.filter(x=>x.isArrear).map(x=>x.code).join(', '):'—';
+        const arrCount=s.hasArrear?s.subjects.filter(x=>x.isArrear).length:0;
+        ws.getRow(r).height=13;
+        [s.usn,s.name,s.sgpa,s.percentage,s.classification,s.overallStatus,arrCount,arrCodes]
+          .forEach((v,c)=>{
+            const haArr=arrCount>0&&c>=6;
+            const cell=ws.getCell(r,c+1);
+            cell.value=v===null||v===undefined?'':v;
+            if(c===5) applyStyle(cell,_ST(s.overallStatus));
+            else if(haArr) applyStyle(cell,_ARR());
+            else applyStyle(cell,{bg:rowBg,sz:10,al:c>1?'center':'left'});
+          });
+        r++;
+      });
+    }
+    r++;
+  };
+
+  addSec(dis,'🏅  DISTINCTION \u2014 SGPA \u2265 7.75', '1F4E79','EBF3FF','D6E6F8');
+  addSec(fc, '\u2B50  FIRST CLASS \u2014 SGPA 6.75 \u2013 7.74','2E75B6','F5FAF0','E8F5E0');
+  addSec(sc, '\u2714  SECOND CLASS \u2014 SGPA < 6.75',   '378ADD','FFF9F0','FFF0E0');
+
+  addFtr(ws,r+2,cols);
+}
+</script>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SECURITY & ANTI-COPY PROTECTION
+     VTU Result Analysis Tool — JCE Belagavi
+     © Dr. Shivkumar Math, HOD Physics
+     ══════════════════════════════════════════════════════════════ -->
+<script>
+(function() {
+  'use strict';
+
+  /* ── 1. DISABLE RIGHT-CLICK CONTEXT MENU ─────────────────────── */
+  document.addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+    return false;
+  }, true);
+
+  /* ── 2. DISABLE KEYBOARD SHORTCUTS ───────────────────────────── */
+  document.addEventListener('keydown', function(e) {
+    const key = e.key ? e.key.toUpperCase() : '';
+    const ctrl = e.ctrlKey || e.metaKey;
+    const shift = e.shiftKey;
+
+    // Ctrl+U  → View Source
+    if (ctrl && key === 'U') { e.preventDefault(); return false; }
+
+    // Ctrl+Shift+I → DevTools (Elements)
+    if (ctrl && shift && key === 'I') { e.preventDefault(); return false; }
+
+    // Ctrl+Shift+J → DevTools (Console)
+    if (ctrl && shift && key === 'J') { e.preventDefault(); return false; }
+
+    // Ctrl+Shift+C → DevTools (Inspector)
+    if (ctrl && shift && key === 'C') { e.preventDefault(); return false; }
+
+    // Ctrl+S → Save Page
+    if (ctrl && key === 'S') { e.preventDefault(); return false; }
+
+    // F12 → DevTools
+    if (e.key === 'F12') { e.preventDefault(); return false; }
+  }, true);
+
+  /* ── 3. DEVELOPER CONSOLE WARNING ────────────────────────────── */
+  // Safe console wrapper — guards against overridden/missing console methods.
+  const _con = {
+    clear : function() { try { if (window.console && typeof window.console.clear === 'function') window.console.clear(); } catch(e){} },
+    log   : function() { try { if (window.console && typeof window.console.log   === 'function') window.console.log.apply(window.console, arguments); } catch(e){} }
+  };
+
+  const _warn = function() {
+    _con.clear();
+    const styles = [
+      'color: #c0392b',
+      'font-size: 16px',
+      'font-weight: bold',
+      'background: #fff3cd',
+      'padding: 8px 16px',
+      'border-left: 5px solid #c0392b'
+    ].join(';');
+    _con.log('%c🔒 RESTRICTED ACCESS', styles);
+    _con.log('%cThis tool is protected intellectual property of Dr. Shivkumar Math, HOD Physics, JCE Belagavi.\nUnauthorised inspection, copying or redistribution is strictly prohibited.', 'color:#555;font-size:12px');
+  };
+
+  // Trigger warning on any console opening via devtools size change
+  let _devOpen = false;
+  const _threshold = 160;
+  setInterval(function() {
+    const widthDiff  = window.outerWidth  - window.innerWidth;
+    const heightDiff = window.outerHeight - window.innerHeight;
+    const opened = widthDiff > _threshold || heightDiff > _threshold;
+    if (opened && !_devOpen) {
+      _devOpen = true;
+      _warn();
+    } else if (!opened) {
+      _devOpen = false;
+    }
+  }, 1000);
+
+  // Also warn immediately if console is already open on load
+  _warn();
+
+})();
+</script>
+
+<style>
+  /* ── 2. DISABLE TEXT SELECTION (CSS) ─────────────────────────── */
+  * {
+    -webkit-user-select: none !important;
+    -moz-user-select:    none !important;
+    -ms-user-select:     none !important;
+    user-select:         none !important;
+  }
+  /* Re-enable selection only for input fields so the tool stays usable */
+  input, textarea, select {
+    -webkit-user-select: text !important;
+    -moz-user-select:    text !important;
+    -ms-user-select:     text !important;
+    user-select:         text !important;
+  }
+</style>
+
+</body>
+</html>
